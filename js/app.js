@@ -565,7 +565,7 @@ const App = {
 
   // Repo used by the song picker (lists assets/music/*.mp3 to preview + choose).
   siteGallery: {
-    repo: 'Elhendawy-1/Surprise',
+    repo: 'Elhendawy-1/Surprise-V2',
     musicCache: null
   },
 

@@ -12,7 +12,7 @@ const Share = {
     // Pages URLs, works on every device). Token is set from the creator
     // page and lives only in that browser's localStorage - never in links.
     githubToken: '',
-    githubRepo: 'Elhendawy-1/Surprise',
+    githubRepo: 'Elhendawy-1/Surprise-V2',
     services: {
       picrd: {
         uploadUrl: 'https://picrd.com/api/upload',
