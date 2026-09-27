@@ -1,0 +1,134 @@
+/* ===== Theme System ===== */
+
+/* Default / Classic Romantic */
+:root,
+[data-theme="classic"] {
+  --primary: #e63946;
+  --primary-light: #ff6b6b;
+  --secondary: #f1faee;
+  --accent: #ffd700;
+  --bg: #ffffff;
+  --bg-alt: #fff5f5;
+  --text: #333333;
+  --text-light: #666666;
+  --card-bg: #ffffff;
+  --card-border: #f0e0e0;
+  --card-hover: #fff0f0;
+  --shadow: rgba(230, 57, 70, 0.15);
+  --shadow-lg: rgba(230, 57, 70, 0.25);
+  --gradient: linear-gradient(135deg, #e63946, #ff6b6b);
+  --gradient-bg: linear-gradient(135deg, #fff5f5, #ffffff);
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-script: 'Dancing Script', cursive;
+}
+
+/* Soft Romantic */
+[data-theme="soft"] {
+  --primary: #f8a4c8;
+  --primary-light: #fcd5ce;
+  --secondary: #fce4ec;
+  --accent: #ffffff;
+  --bg: #fff5f5;
+  --bg-alt: #fce4ec;
+  --text: #5d4037;
+  --text-light: #8d6e63;
+  --card-bg: #ffffff;
+  --card-border: #f8bbd0;
+  --card-hover: #fce4ec;
+  --shadow: rgba(248, 164, 200, 0.2);
+  --shadow-lg: rgba(248, 164, 200, 0.35);
+  --gradient: linear-gradient(135deg, #f8a4c8, #fcd5ce);
+  --gradient-bg: linear-gradient(135deg, #fff5f5, #fce4ec);
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-script: 'Dancing Script', cursive;
+}
+
+/* Deep Romantic */
+[data-theme="deep"] {
+  --primary: #800020;
+  --primary-light: #a52a2a;
+  --secondary: #b76e79;
+  --accent: #d4af37;
+  --bg: #1a0000;
+  --bg-alt: #2d0a0a;
+  --text: #f5f5f5;
+  --text-light: #d4af37;
+  --card-bg: #2d0a0a;
+  --card-border: #800020;
+  --card-hover: #3d1a1a;
+  --shadow: rgba(128, 0, 32, 0.3);
+  --shadow-lg: rgba(212, 175, 55, 0.2);
+  --gradient: linear-gradient(135deg, #800020, #d4af37);
+  --gradient-bg: linear-gradient(135deg, #1a0000, #2d0a0a);
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-script: 'Dancing Script', cursive;
+}
+
+/* Dark Romantic */
+[data-theme="dark"] {
+  --primary: #c9a0dc;
+  --primary-light: #dfc0ef;
+  --secondary: #4a1a1a;
+  --accent: #e0e0e0;
+  --bg: #0d0000;
+  --bg-alt: #1a0a0a;
+  --text: #e0e0e0;
+  --text-light: #c9a0dc;
+  --card-bg: #1a0a0a;
+  --card-border: #4a1a1a;
+  --card-hover: #2a1a1a;
+  --shadow: rgba(201, 160, 220, 0.15);
+  --shadow-lg: rgba(201, 160, 220, 0.25);
+  --gradient: linear-gradient(135deg, #4a1a1a, #c9a0dc);
+  --gradient-bg: linear-gradient(135deg, #0d0000, #1a0a0a);
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-script: 'Dancing Script', cursive;
+}
+
+/* Elegant */
+[data-theme="elegant"] {
+  --primary: #d4af37;
+  --primary-light: #e6c84d;
+  --secondary: #f5f5f5;
+  --accent: #333333;
+  --bg: #fafafa;
+  --bg-alt: #f5f5f5;
+  --text: #333333;
+  --text-light: #777777;
+  --card-bg: #ffffff;
+  --card-border: #e0e0e0;
+  --card-hover: #f5f5f5;
+  --shadow: rgba(212, 175, 55, 0.15);
+  --shadow-lg: rgba(212, 175, 55, 0.25);
+  --gradient: linear-gradient(135deg, #333333, #d4af37);
+  --gradient-bg: linear-gradient(135deg, #fafafa, #f5f5f5);
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-script: 'Dancing Script', cursive;
+}
+
+/* Warm and Cozy */
+[data-theme="warm"] {
+  --primary: #d4a373;
+  --primary-light: #e6be91;
+  --secondary: #faedcd;
+  --accent: #e9edc9;
+  --bg: #fefae0;
+  --bg-alt: #faedcd;
+  --text: #333333;
+  --text-light: #666666;
+  --card-bg: #ffffff;
+  --card-border: #e9edc9;
+  --card-hover: #faedcd;
+  --shadow: rgba(212, 163, 115, 0.2);
+  --shadow-lg: rgba(212, 163, 115, 0.35);
+  --gradient: linear-gradient(135deg, #d4a373, #e9edc9);
+  --gradient-bg: linear-gradient(135deg, #fefae0, #faedcd);
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-script: 'Dancing Script', cursive;
+}

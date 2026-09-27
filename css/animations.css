@@ -1,0 +1,390 @@
+/* ===== Keyframe Animations ===== */
+
+/* Spin for loading */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Floating hearts */
+@keyframes floatUp {
+  0% {
+    transform: translateY(100vh) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100px) rotate(360deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Glow pulse */
+@keyframes glow {
+  0%, 100% {
+    text-shadow: 0 0 5px var(--shadow), 0 0 10px var(--shadow);
+  }
+  50% {
+    text-shadow: 0 0 20px var(--shadow-lg), 0 0 40px var(--shadow);
+  }
+}
+
+/* Fade in from bottom */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Scale in */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Letter unfold */
+@keyframes unfold {
+  0% {
+    opacity: 0;
+    transform: perspective(800px) rotateX(-30deg) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: perspective(800px) rotateX(5deg) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(800px) rotateX(0deg) scale(1);
+  }
+}
+
+/* Text reveal word by word */
+@keyframes wordReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Heartbeat */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+}
+
+/* Shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Gentle bounce */
+@keyframes gentleBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Sparkle */
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/* ===== Animation Classes ===== */
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.5s ease forwards;
+}
+
+.animate-unfold {
+  animation: unfold 0.8s ease forwards;
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.animate-gentleBounce {
+  animation: gentleBounce 2s ease infinite;
+}
+
+/* Stagger delay utilities */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+.delay-6 { animation-delay: 0.6s; }
+.delay-7 { animation-delay: 0.7s; }
+.delay-8 { animation-delay: 0.8s; }
+
+/* ===== Floating Heart Element ===== */
+.floating-heart {
+  position: fixed;
+  font-size: 1.5rem;
+  pointer-events: none;
+  z-index: 9999;
+  animation: floatUp linear forwards, sway 3.4s ease-in-out infinite;
+}
+
+/* Gentle falling petals (flowers + hearts drifting down) */
+@keyframes fallDown {
+  0% {
+    transform: translateY(-8vh) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(108vh) rotate(320deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes sway {
+  0%, 100% { margin-left: 0; }
+  50% { margin-left: 36px; }
+}
+
+.falling-petal {
+  position: fixed;
+  top: 0;
+  pointer-events: none;
+  z-index: 9998;
+  animation: fallDown linear forwards, sway ease-in-out infinite;
+}
+
+/* Opening celebration burst pieces */
+@keyframes burstFly {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.35) rotate(160deg);
+    opacity: 0;
+  }
+}
+
+.burst-piece {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  animation: burstFly 1.7s cubic-bezier(0.17, 0.67, 0.35, 1) forwards;
+}
+
+/* Confetti rain (colored paper pieces) */
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-6vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), 108vh) rotate(720deg);
+    opacity: 0.85;
+  }
+}
+
+.confetti-piece {
+  position: fixed;
+  top: 0;
+  pointer-events: none;
+  z-index: 9998;
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+}
+
+/* Inviting pulse on the music button so recipients tap to play */
+@keyframes musicInvite {
+  0%, 100% { box-shadow: 0 4px 15px var(--shadow); }
+  50% { box-shadow: 0 4px 26px var(--shadow-lg), 0 0 0 8px var(--shadow); }
+}
+
+/* Candle flame flicker */
+@keyframes flameFlicker {
+  0%, 100% { transform: translateX(-50%) scale(1) skewX(0deg); }
+  30% { transform: translateX(-50%) scale(1.06, 1.12) skewX(2deg); }
+  60% { transform: translateX(-50%) scale(0.94, 0.9) skewX(-3deg); }
+}
+
+/* Smoke puff rising from a blown-out candle */
+@keyframes smokeRise {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+  25% { opacity: 0.7; }
+  100% { opacity: 0; transform: translate(calc(-50% + 10px), -46px) scale(1.4); }
+}
+
+.btn-music.play-hint {
+  animation: musicInvite 2s ease infinite;
+}
+
+/* ===== Particle ===== */
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ===== Section Transition ===== */
+.section {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.section.active {
+  opacity: 1;
+}
+
+/* ===== Recipient View Animations ===== */
+.recipient-hero-section .recipient-main-photo {
+  opacity: 0;
+  animation: scaleIn 0.8s ease 0.2s forwards;
+}
+
+.recipient-hero-section .recipient-greeting {
+  opacity: 0;
+  animation: fadeInUp 0.8s ease 0.4s forwards;
+}
+
+.recipient-hero-section .recipient-scroll-hint {
+  opacity: 0;
+  animation: fadeIn 1s ease 1.5s forwards;
+}
+
+/* Message card keeps its unfold flourish, but triggered on scroll (not page load) */
+.recipient-message-card {
+  opacity: 0;
+}
+
+.recipient-message-card.visible {
+  animation: unfold 0.8s ease forwards;
+}
+
+/* NOTE: .recipient-gallery-item base styles live in styles.css (single source).
+   Do not duplicate them here - this file loads last and would override the
+   smooth reveal transition. */
+
+.recipient-closing {
+  opacity: 0;
+}
+
+.recipient-closing.visible {
+  animation: fadeIn 1s ease forwards;
+}
+
+/* Generic scroll-reveal: fades + rises when scrolled into view */
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Birthday details card reveals on scroll */
+.recipient-details-card {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.recipient-details-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.recipient-closing-hearts {
+  animation: heartbeat 1.5s ease infinite;
+}
+
+/* Scroll indicator pulse */
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(10px); }
+}
+
+.recipient-scroll-hint .scroll-arrow {
+  animation: scrollPulse 2s ease infinite;
+}
+
+/* Comfort: honor reduced-motion requests - everything rests visible */
+@media (prefers-reduced-motion: reduce) {
+  .recipient-gallery-item,
+  .recipient-gallery-item img,
+  .recipient-gallery-item::after,
+  .reveal,
+  .recipient-message-card,
+  .recipient-details-card,
+  .recipient-closing,
+  .recipient-hero-section .recipient-main-photo,
+  .recipient-hero-section .recipient-greeting,
+  .recipient-hero-section .recipient-scroll-hint,
+  .floating-heart,
+  .falling-petal,
+  .burst-piece,
+  .confetti-piece,
+  .photo-caption,
+  .gallery-item-text {
+    transition: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  #preview-content [style*="opacity: 0"] {
+    opacity: 1 !important;
+  }
+}
