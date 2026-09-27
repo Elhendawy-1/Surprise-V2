@@ -13,7 +13,7 @@ No frameworks, no build step, no server, no database — just open `index.html` 
 ## Features
 
 - **5 occasions:** Birthday 🎂, Valentine 💘, Anniversary 🥂, Thank You 🙏, Just Because 💌
-- **11 relationships + custom:** Mom, Dad, Sister, Brother, Aunt, Friend, Husband, Wife, Boyfriend, Girlfriend, Other (type anyone, e.g. Grandma)
+- **11 relationships + custom:** Mom, Dad, Sister, Brother, Aunt, Friend, Husband, Wife, Boyfriend, Girlfriend, Other (type anyone, e.g. Grandma) — romantic topics (Valentine, Anniversary) focus on partners + Other
 - **Unlimited photos with captions** — upload from device (with auto-compress) or paste Google Drive / Dropbox / image links, live load check per photo
 - **Auto or custom message** — 55 message templates per language (11 relationships × 5 occasions), in English + Arabic, or write your own
 - **6 romantic themes:** Classic, Soft, Deep, Dark, Elegant, Warm (CSS variables, instant preview)
@@ -29,14 +29,14 @@ No frameworks, no build step, no server, no database — just open `index.html` 
 ### Creating a gift
 
 1. **Topic** — pick Birthday, Valentine, Anniversary, Thank You, or Just Because
-2. **Who** — pick one of the 11 relationships, or Other → type any name (e.g. Grandma)
+2. **Who** — pick from the relationships that fit the topic (romantic topics show partners + Other), or Other → type any name (e.g. Grandma)
 3. **Details** — recipient name + topic fields:
    - Birthday: date of birth (age + countdown)
    - Valentine: what you love about them
    - Anniversary: anniversary date + years together
    - Thank You: what you are thanking them for
    - Unlimited photos, each with its own caption
-4. **Message, theme, music** — auto-generated message or your own text, 6 theme palettes, music on/off + song picker with preview
+4. **Message, theme, music** — auto-generated message or your own text, 6 theme palettes with live page preview + name/HEX chip, music on/off + song picker with preview
 5. **Preview** — see exactly what they will see before sending
 6. **Share** — get a shortened link + QR code (Copy, Open in New Tab, Download QR)
 
@@ -72,6 +72,7 @@ If a link was cut short while sharing, a friendly “link looks broken” notice
   - Just Because → Clair de Lune (brass, US Air Force Band of Flight)
   - Birthday → bundled `song.mp3`
 - Plays after the recipient’s first tap (browsers block autoplay), with play/pause button + tap-to-play prompt. Loops continuously.
+- Audio is lazy: nothing downloads on page open — the chosen track loads only when playback starts. The music button shows play / loading / pause / retry states with screen-reader labels, and failures fall through the track chain without breaking the page.
 
 Bundled tracks in `assets/music/`: `song.mp3`, Für Elise, Canon in D, Gymnopédie No. 1, Clair de Lune, plus calm piano extras. To add a track to the picker, just drop the MP3 into `assets/music/` and push.
 

@@ -49,8 +49,23 @@ const App = {
     this.addPhotoSlot();
     this.addPhotoSlot();
     this.applyLang();
+    this.updateThemePreview();
     this.showSection('hero');
     Animations.startHeroAnimation();
+
+    // Leave no timers or audio running when the page is hidden/closed.
+    if (!window.__giftCleanupWired) {
+      window.__giftCleanupWired = true;
+      window.addEventListener('pagehide', () => {
+        try {
+          if (App.countdownTimer) clearInterval(App.countdownTimer);
+          if (App.songPreviewAudio) App.songPreviewAudio.pause();
+          const bg = document.getElementById('bg-music');
+          if (bg) bg.pause();
+          Animations.stopFloatingHearts();
+        } catch (e) { /* ignore */ }
+      });
+    }
   },
 
   // Build one photo slot (unlimited - the user adds as many as they like)
@@ -63,18 +78,18 @@ const App = {
     div.dataset.slot = slot;
     div.innerHTML =
       '<div class="photo-upload-area" id="photo-upload-area-' + slot + '">' +
-        '<input type="file" accept="image/*" class="file-input photo-file-input" data-slot="' + slot + '">' +
+        '<input type="file" accept="image/*" class="file-input photo-file-input" data-slot="' + slot + '" aria-label="Upload photo">' +
         '<div class="photo-preview" id="photo-preview-' + slot + '" style="display:none;">' +
-          '<img id="photo-preview-img-' + slot + '" alt="Preview">' +
-          '<button type="button" class="btn-remove photo-remove-btn" data-slot="' + slot + '">&times;</button>' +
+          '<img id="photo-preview-img-' + slot + '" alt="Photo preview">' +
+          '<button type="button" class="btn-remove photo-remove-btn" data-slot="' + slot + '" aria-label="Remove photo">&times;</button>' +
         '</div>' +
         '<div class="photo-placeholder" id="photo-placeholder-' + slot + '">' +
           '<span class="upload-icon">&#128247;</span>' +
           '<span>+ Add Photo</span>' +
         '</div>' +
       '</div>' +
-      '<input type="text" class="photo-url-input" data-slot="' + slot + '" data-i18n-ph="urlPh" placeholder="' + this.escapeHtml(t('urlPh', lang)) + '">' +
-      '<input type="text" class="photo-text-input" data-slot="' + slot + '" data-i18n-ph="captionPh" placeholder="' + this.escapeHtml(t('captionPh', lang)) + '">';
+      '<input type="text" class="photo-url-input" data-slot="' + slot + '" data-i18n-ph="urlPh" aria-label="Photo link" placeholder="' + this.escapeHtml(t('urlPh', lang)) + '">' +
+      '<input type="text" class="photo-text-input" data-slot="' + slot + '" data-i18n-ph="captionPh" aria-label="Photo caption" placeholder="' + this.escapeHtml(t('captionPh', lang)) + '">';
     grid.appendChild(div);
     return slot;
   },
@@ -233,7 +248,7 @@ const App = {
 
     // Open link
     document.getElementById('btn-open-link').addEventListener('click', () => {
-      window.open(document.getElementById('share-link').value, '_blank');
+      window.open(document.getElementById('share-link').value, '_blank', 'noopener');
     });
 
     // New gift
@@ -289,7 +304,24 @@ const App = {
       el.innerHTML = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || '';
     });
     const toggle = document.getElementById('lang-toggle');
-    if (toggle) toggle.textContent = lang === 'ar' ? 'EN' : 'عربي';
+    if (toggle) {
+      toggle.textContent = lang === 'ar' ? 'EN' : 'عربي';
+      toggle.setAttribute('aria-label', t('langSwitch', lang));
+    }
+    // Keep dynamic slot labels translated as well.
+    document.querySelectorAll('.photo-file-input').forEach(el => {
+      el.setAttribute('aria-label', lang === 'ar' ? 'ارفع صورة' : 'Upload photo');
+    });
+    document.querySelectorAll('.photo-url-input').forEach(el => {
+      el.setAttribute('aria-label', lang === 'ar' ? 'رابط الصورة' : 'Photo link');
+    });
+    document.querySelectorAll('.photo-text-input').forEach(el => {
+      el.setAttribute('aria-label', lang === 'ar' ? 'تعليق الصورة' : 'Photo caption');
+    });
+    document.querySelectorAll('.photo-remove-btn').forEach(el => {
+      el.setAttribute('aria-label', lang === 'ar' ? 'إزالة الصورة' : 'Remove photo');
+    });
+    this.updateThemePreview();
     this.updateAutoMessage();
   },
 
@@ -559,13 +591,44 @@ const App = {
     document.getElementById('auto-message-preview').textContent = message;
   },
 
-  // Select theme
+  // Select theme (applies live so the creator previews it everywhere)
   selectTheme(theme) {
     this.state.selectedTheme = theme;
 
     document.querySelectorAll('.theme-swatch').forEach(swatch => {
-      swatch.classList.toggle('active', swatch.dataset.theme === theme);
+      const on = swatch.dataset.theme === theme;
+      swatch.classList.toggle('active', on);
+      if (on) swatch.setAttribute('aria-pressed', 'true');
+      else swatch.removeAttribute('aria-pressed');
     });
+
+    // Live preview: the whole creator page re-themes instantly.
+    document.documentElement.setAttribute('data-theme', theme);
+    this.updateThemePreview();
+  },
+
+  // Theme name + HEX preview shown before generation.
+  themeMeta: {
+    classic: { hex: '#E63946' },
+    soft: { hex: '#F8A4C8' },
+    deep: { hex: '#800020' },
+    dark: { hex: '#C9A0DC' },
+    elegant: { hex: '#D4AF37' },
+    warm: { hex: '#D4A373' }
+  },
+
+  updateThemePreview() {
+    const dot = document.getElementById('theme-preview-dot');
+    const text = document.getElementById('theme-preview-text');
+    const hex = document.getElementById('theme-preview-hex');
+    if (!dot || !text || !hex) return;
+    const lang = this.state.lang || 'en';
+    const theme = this.state.selectedTheme || 'classic';
+    const meta = this.themeMeta[theme] || this.themeMeta.classic;
+    const nameKey = { classic: 'themeClassic', soft: 'themeSoft', deep: 'themeDeep', dark: 'themeDark', elegant: 'themeElegant', warm: 'themeWarm' }[theme] || 'themeClassic';
+    dot.style.background = meta.hex;
+    text.textContent = t('themePreview', lang) + ': ' + t(nameKey, lang);
+    hex.textContent = meta.hex;
   },
 
   // Repo used by the song picker (lists assets/music/*.mp3 to preview + choose).
@@ -646,7 +709,8 @@ const App = {
     this.renderSongChoice(this.siteGallery.musicCache || []);
   },
 
-  // Preview the chosen song right in the form (tap again to stop)
+  // Preview the chosen song right in the form (tap again to stop).
+  // Lazy: nothing downloads until the creator taps preview.
   previewSongChoice() {
     const btn = document.getElementById('song-choice-preview');
     if (this.songPreviewAudio && !this.songPreviewAudio.paused) {
@@ -654,13 +718,19 @@ const App = {
       return;
     }
     this.stopSongPreview();
+    // Never overlap the gift background track with the form preview.
+    const bg = document.getElementById('bg-music');
+    if (bg && !bg.paused) {
+      try { bg.pause(); } catch (e) { /* ignore */ }
+    }
     const src = this.state.songChoice || 'assets/music/song.mp3';
     const audio = new Audio();
-    audio.preload = 'auto';
+    audio.preload = 'none';
     audio.onerror = () => this.stopSongPreview();
     audio.onended = () => this.stopSongPreview();
     this.songPreviewAudio = audio;
     audio.src = src;
+    if (btn) btn.setAttribute('aria-label', t('musicPause', this.state.lang));
     audio.play().then(() => {
       if (btn) {
         btn.textContent = '⏹';
@@ -673,6 +743,7 @@ const App = {
     if (this.songPreviewAudio) {
       try {
         this.songPreviewAudio.pause();
+        this.songPreviewAudio.removeAttribute('src');
       } catch (e) { /* ignore */ }
       this.songPreviewAudio = null;
     }
@@ -680,6 +751,7 @@ const App = {
     if (btn) {
       btn.textContent = '▶';
       btn.classList.remove('playing');
+      btn.setAttribute('aria-label', t('musicPlay', this.state.lang));
     }
   },
 
@@ -849,17 +921,31 @@ const App = {
     return data;
   },
 
-  // Generate preview
+  // Generate preview (guarded against double taps)
   async generatePreview() {
+    if (this.isPreviewing) return;
     const name = document.getElementById('recipient-name').value.trim();
     if (!name) {
       alert(t('alertName', this.state.lang));
       return;
     }
-
-    const data = this.collectPreviewData();
-    this.renderRecipientView('preview-content', data);
-    this.showSection('preview');
+    this.isPreviewing = true;
+    const btn = document.getElementById('btn-preview');
+    if (btn) {
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+    }
+    try {
+      const data = this.collectPreviewData();
+      this.renderRecipientView('preview-content', data);
+      this.showSection('preview');
+    } finally {
+      this.isPreviewing = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+      }
+    }
   },
 
   setLoadingStatus(text) {
@@ -867,9 +953,19 @@ const App = {
     if (el) el.textContent = text || '';
   },
 
-  // Generate share link
+  // Generate share link (guarded: one run at a time, no duplicate uploads)
   async generateLink() {
     const lang = this.state.lang || 'en';
+    if (this.isGenerating) {
+      this.setLoadingStatus(t('generatingBusy', lang));
+      return;
+    }
+    this.isGenerating = true;
+    const genBtn = document.getElementById('btn-generate');
+    if (genBtn) {
+      genBtn.disabled = true;
+      genBtn.setAttribute('aria-busy', 'true');
+    }
     // Show loading
     document.getElementById('loading-overlay').style.display = 'flex';
     this.setLoadingStatus(t('loadPreparing', lang));
@@ -990,7 +1086,7 @@ const App = {
               .then(blob => {
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = 'birthday-gift-qr.png';
+                a.download = 'gift-qr-' + (finalData.occasion || 'birthday') + '.png';
                 document.body.appendChild(a);
                 a.click();
                 setTimeout(() => {
@@ -998,7 +1094,7 @@ const App = {
                   a.remove();
                 }, 1000);
               })
-              .catch(() => window.open(qrUrl, '_blank'));
+              .catch(() => window.open(qrUrl, '_blank', 'noopener'));
           };
         }
         qrBox.style.display = '';
@@ -1018,6 +1114,11 @@ const App = {
       console.error('Error generating link:', err);
       alert(t('alertError', lang, { a: err.message }));
     } finally {
+      this.isGenerating = false;
+      if (genBtn) {
+        genBtn.disabled = false;
+        genBtn.removeAttribute('aria-busy');
+      }
       this.setLoadingStatus('');
       document.getElementById('loading-overlay').style.display = 'none';
     }
@@ -1200,12 +1301,13 @@ const App = {
     // prompt. The first tap starts the song for sure.
     // Each topic gets its own recommended track; the bundled song
     // is the fallback if a stream fails.
+    // Lazy: the <audio> element carries no src on page load — the track
+    // is assigned here only, so no audio downloads until a gift with
+    // music is actually opened.
     if (data.music !== false) {
+      this.stopSongPreview();
       const musicEl = document.getElementById('bg-music');
-      // Set src directly on <audio> (not via <source> child) so the
-      // error listener below fires reliably in all browsers.
-      const staleSource = musicEl.querySelector('source');
-      if (staleSource) staleSource.remove();
+      this.cleanupRecipientMusic();
       const topicTracks = {
         birthday: [],
         valentine: ['https://upload.wikimedia.org/wikipedia/commons/3/3e/Audionautix-com-ccby-furelise.mp3'],
@@ -1218,64 +1320,122 @@ const App = {
         .concat(topicTracks[data.occasion] || [])
         .concat(['assets/music/song.mp3']);
       let trackIdx = 0;
+      let musicState = 'idle'; // idle | loading | playing | paused | error
+      const prompt = document.getElementById('music-prompt');
+      const toggle = document.getElementById('btn-music-toggle');
+      const controls = document.getElementById('music-controls');
+
+      const setMusicState = (next) => {
+        musicState = next;
+        const lang = this.state.lang || 'en';
+        const icon = document.getElementById('btn-music-icon');
+        toggle.classList.remove('playing', 'play-hint', 'loading');
+        toggle.removeAttribute('disabled');
+        if (next === 'playing') {
+          if (prompt) prompt.style.display = 'none';
+          controls.style.display = 'block';
+          if (icon) icon.textContent = '⏸';
+          toggle.setAttribute('aria-label', t('musicPause', lang));
+          toggle.setAttribute('aria-pressed', 'true');
+          toggle.classList.add('playing');
+        } else if (next === 'loading') {
+          if (prompt) prompt.style.display = 'none';
+          controls.style.display = 'block';
+          if (icon) icon.textContent = '…';
+          toggle.setAttribute('aria-label', t('musicLoading', lang));
+          toggle.setAttribute('aria-pressed', 'false');
+          toggle.classList.add('loading');
+        } else if (next === 'error') {
+          controls.style.display = 'block';
+          if (icon) icon.textContent = '!';
+          toggle.setAttribute('aria-label', t('musicError', lang));
+          toggle.setAttribute('aria-pressed', 'false');
+        } else {
+          // paused / idle: invite a tap without covering content
+          if (icon) icon.textContent = '▶';
+          toggle.setAttribute('aria-label', t('musicPlay', lang));
+          toggle.setAttribute('aria-pressed', 'false');
+          toggle.classList.add('play-hint');
+        }
+      };
+
       const loadTrack = () => {
+        setMusicState('loading');
+        musicEl.preload = 'none';
         musicEl.src = tracks[trackIdx];
         musicEl.load();
       };
-      const prompt = document.getElementById('music-prompt');
-      const toggle = document.getElementById('btn-music-toggle');
-      const showPaused = () => {
-        toggle.textContent = '▶';
-        toggle.classList.remove('playing');
-      };
-      const hideMusicUi = () => {
-        document.getElementById('music-controls').style.display = 'none';
-        if (prompt) prompt.style.display = 'none';
-      };
-      let hasPlayed = false;
-      const showPlaying = () => {
-        hasPlayed = true;
-        if (prompt) prompt.style.display = 'none';
-        document.getElementById('music-controls').style.display = 'block';
-        toggle.textContent = '⏸';
-        toggle.classList.remove('play-hint');
-        toggle.classList.add('playing');
-      };
-      musicEl.addEventListener('error', () => {
-        if (hasPlayed && musicEl.currentTime > 0) {
-          musicEl.play().catch(() => {});
+
+      const onWaiting = () => { if (musicState !== 'error') setMusicState('loading'); };
+      const onPlaying = () => setMusicState('playing');
+      const onPause = () => { if (musicState === 'playing') setMusicState('paused'); };
+      const onEnded = () => setMusicState('paused');
+      const onTrackError = () => {
+        // A mid-playback stall is retried on the same track; a load
+        // failure advances through the fallback chain instead.
+        if (musicEl.currentTime > 0 && trackIdx >= tracks.length - 1) {
+          musicEl.play().catch(() => setMusicState('error'));
           return;
         }
         if (trackIdx < tracks.length - 1) {
           trackIdx++;
           loadTrack();
         } else {
-          hideMusicUi();
+          setMusicState('error');
         }
-      });
+      };
+      musicEl.addEventListener('waiting', onWaiting);
+      musicEl.addEventListener('playing', onPlaying);
+      musicEl.addEventListener('pause', onPause);
+      musicEl.addEventListener('ended', onEnded);
+      musicEl.addEventListener('error', onTrackError);
+      this.recipientMusicCleanup = () => {
+        musicEl.removeEventListener('waiting', onWaiting);
+        musicEl.removeEventListener('playing', onPlaying);
+        musicEl.removeEventListener('pause', onPause);
+        musicEl.removeEventListener('ended', onEnded);
+        musicEl.removeEventListener('error', onTrackError);
+      };
+
       loadTrack();
 
       const startMusic = () => {
-        if (!musicEl.paused) return;
-        musicEl.play().then(showPlaying).catch(() => {});
+        if (musicState === 'playing' || musicState === 'loading') return;
+        if (musicState === 'error') {
+          // Retry the failed track on explicit tap.
+          loadTrack();
+        }
+        setMusicState('loading');
+        musicEl.play().catch(() => {
+          if (musicState === 'loading') setMusicState('paused');
+        });
       };
 
       if (prompt) {
         prompt.style.display = 'block';
         prompt.onclick = startMusic;
       } else {
-        document.getElementById('music-controls').style.display = 'block';
+        controls.style.display = 'block';
       }
-      toggle.classList.add('play-hint');
-      // Fallback: any first tap anywhere also starts the music
-      document.addEventListener('click', startMusic, { once: true });
-      // Dynamic play/stop toggle
+      setMusicState('paused');
+      // Fallback: any first tap anywhere also starts the music.
+      // Guarded so re-renders (e.g. language switch) never stack it.
+      if (!document.dataset.musicKick) {
+        document.dataset.musicKick = '1';
+        document.addEventListener('click', () => {
+          const mus = document.getElementById('bg-music');
+          if (mus && mus.paused && document.getElementById('recipient-view').style.display === 'block') {
+            mus.play().catch(() => {});
+          }
+        }, { once: true });
+      }
+      // Dynamic play / pause / retry toggle.
       toggle.onclick = () => {
         if (musicEl.paused) {
-          musicEl.play().then(showPlaying).catch(() => {});
+          startMusic();
         } else {
           musicEl.pause();
-          showPaused();
+          setMusicState('paused');
         }
       };
     }
@@ -1289,14 +1449,28 @@ const App = {
     // Phones often throttle timers while the tab is in the background,
     // which can silently eat the celebration. Restart the ambient
     // hearts + petals whenever the gift tab becomes visible again.
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && recipientView.style.display === 'block') {
-        Animations.stopFloatingHearts();
-        Animations.startFloatingHearts(recipientView, 1400);
-        Animations.startPetalDrift(recipientView, 2800);
-        Animations.startBalloonDrift(recipientView, 5200);
-      }
-    });
+    // Registered once: showRecipientView can run again (language
+    // switch re-renders), and the listener must not pile up.
+    if (!document.dataset.ambientWatch) {
+      document.dataset.ambientWatch = '1';
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && document.getElementById('recipient-view').style.display === 'block') {
+          Animations.stopFloatingHearts();
+          Animations.startFloatingHearts(document.getElementById('recipient-view'), 1400);
+          Animations.startPetalDrift(document.getElementById('recipient-view'), 2800);
+          Animations.startBalloonDrift(document.getElementById('recipient-view'), 5200);
+        }
+      });
+    }
+  },
+
+  // Detach the previous gift's audio listeners before wiring a new track
+  // chain (language switch re-renders the gift on the same <audio> node).
+  cleanupRecipientMusic() {
+    if (this.recipientMusicCleanup) {
+      try { this.recipientMusicCleanup(); } catch (e) { /* ignore */ }
+      this.recipientMusicCleanup = null;
+    }
   },
 
   // Re-render translatable gift content after a language switch
@@ -1352,6 +1526,8 @@ const App = {
         <div class="detail-value"></div>
       `;
       document.querySelector('#recipient-details-content .detail-value').textContent = details;
+    } else {
+      document.getElementById('recipient-details').style.display = 'none';
     }
   },
 
@@ -1448,7 +1624,9 @@ const App = {
           observer.unobserve(entry.target);
         }
       });
-    }, { root: root, threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      // The gift page scrolls the document (viewport), not an inner
+      // container — observe against the viewport (default root).
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
 
     items.forEach(item => observer.observe(item));
     this.enableGalleryTilt();
@@ -1486,27 +1664,55 @@ const App = {
     root.addEventListener('mouseleave', resetAll);
   },
 
-  // Toggle music
+  // Toggle music (recipient gift page control)
   toggleMusic() {
     const music = document.getElementById('bg-music');
     const btn = document.getElementById('btn-music-toggle');
+    const icon = document.getElementById('btn-music-icon');
+    const lang = this.state.lang || 'en';
 
     if (music.paused) {
       music.play().then(() => {
-        btn.textContent = '\u266B';
+        if (icon) icon.textContent = '⏸';
+        btn.setAttribute('aria-label', t('musicPause', lang));
+        btn.setAttribute('aria-pressed', 'true');
         btn.classList.remove('play-hint');
+        btn.classList.add('playing');
       }).catch(() => {});
     } else {
       music.pause();
-      btn.textContent = '\u2664';
+      if (icon) icon.textContent = '▶';
+      btn.setAttribute('aria-label', t('musicPlay', lang));
+      btn.setAttribute('aria-pressed', 'false');
+      btn.classList.remove('playing');
     }
   },
 
-  // Reset state
+  // Reset state (keeps the creator's language; clears timers + audio)
   reset() {
+    const keepLang = this.state.lang || 'en';
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    this.stopSongPreview();
+    this.cleanupRecipientMusic();
+    const bg = document.getElementById('bg-music');
+    if (bg) {
+      try { bg.pause(); } catch (e) { /* ignore */ }
+      bg.removeAttribute('src');
+      bg.preload = 'none';
+    }
+    document.getElementById('music-controls').style.display = 'none';
+    document.getElementById('music-prompt').style.display = 'none';
+    Animations.stopFloatingHearts();
+    this.isGenerating = false;
+    this.isPreviewing = false;
+    this.lastRecipientData = null;
+
     this.state = {
       currentSection: 'hero',
-      lang: 'en',
+      lang: keepLang,
       occasion: null,
       relationship: null,
       customRelationship: '',
@@ -1519,10 +1725,15 @@ const App = {
       photos: {},
       photoUrls_fromFiles: {},
       photoSlotSeq: 0,
+      songChoice: '',
+      songChoiceName: '',
       selectedTheme: 'classic'
     };
 
-    // Reset UI
+    // Clear any inline hiding left by the recipient view, then reset UI
+    document.querySelectorAll('.section').forEach(s => { s.style.display = ''; });
+    document.getElementById('recipient-view').style.display = 'none';
+    document.body.style.background = '';
     document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
     document.querySelectorAll('#relationship-grid .card').forEach(c => { c.style.display = ''; });
     document.getElementById('custom-relationship-wrap').style.display = 'none';

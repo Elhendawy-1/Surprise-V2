@@ -131,7 +131,17 @@ const I18N = {
     relWife: 'Wife',
     relBoyfriend: 'Boyfriend',
     relGirlfriend: 'Girlfriend',
-    relOther: 'Other'
+    relOther: 'Other',
+    skipLink: 'Skip to gift creator',
+    shareLinkLabel: 'Gift link',
+    langSwitch: 'Switch language',
+    musicPlay: 'Play music',
+    musicPause: 'Pause music',
+    musicLoading: 'Loading music...',
+    musicUnavailable: 'Music unavailable',
+    musicError: 'Music failed to load. Tap to retry.',
+    themePreview: 'Preview',
+    generatingBusy: 'Already creating your gift...'
   },
   ar: {
     heroSubtitle: 'أنشئ هدية رقمية مميزة لشخص عزيز عليك',
@@ -263,7 +273,17 @@ const I18N = {
     relWife: 'زوجة',
     relBoyfriend: 'حبيب',
     relGirlfriend: 'حبيبة',
-    relOther: 'شخص آخر'
+    relOther: 'شخص آخر',
+    skipLink: 'تخطَّ إلى منشئ الهدايا',
+    shareLinkLabel: 'رابط الهدية',
+    langSwitch: 'تبديل اللغة',
+    musicPlay: 'تشغيل الموسيقى',
+    musicPause: 'إيقاف الموسيقى مؤقتًا',
+    musicLoading: 'جارٍ تحميل الموسيقى...',
+    musicUnavailable: 'الموسيقى غير متاحة',
+    musicError: 'تعذّر تحميل الموسيقى. اضغط لإعادة المحاولة.',
+    themePreview: 'معاينة',
+    generatingBusy: 'جارٍ إنشاء هديتك بالفعل...'
   }
 };
 

@@ -360,7 +360,9 @@
   animation: scrollPulse 2s ease infinite;
 }
 
-/* Comfort: honor reduced-motion requests - everything rests visible */
+/* Comfort: honor reduced-motion requests - everything rests visible.
+   Decorative infinite pulses are stilled too; the loading spinner keeps
+   a static ring (no rotation) so progress is still communicated. */
 @media (prefers-reduced-motion: reduce) {
   .recipient-gallery-item,
   .recipient-gallery-item img,
@@ -377,11 +379,22 @@
   .burst-piece,
   .confetti-piece,
   .photo-caption,
-  .gallery-item-text {
+  .gallery-item-text,
+  .recipient-closing-hearts,
+  .recipient-scroll-hint .scroll-arrow,
+  .btn-music.play-hint,
+  .btn-music.playing::after,
+  .music-prompt,
+  .centerpiece-visual {
     transition: none !important;
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  .loading-spinner {
+    animation: none !important;
+    border-top-color: var(--card-border);
   }
 
   #preview-content [style*="opacity: 0"] {

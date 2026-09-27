@@ -21,14 +21,15 @@
   <meta name="twitter:title" content="Send Love & Warmth - A Gift For You">
   <meta name="twitter:description" content="Someone special made you a personalized digital gift. Open it to see your photos, message, music and celebration.">
   <meta name="twitter:image" content="https://elhendawy-1.github.io/Surprise-V2/assets/images/og-preview.png">
-  <link rel="stylesheet" href="css/themes.css?v=29">
-  <link rel="stylesheet" href="css/styles.css?v=29">
-  <link rel="stylesheet" href="css/animations.css?v=29">
+  <link rel="stylesheet" href="css/themes.css?v=30">
+  <link rel="stylesheet" href="css/styles.css?v=30">
+  <link rel="stylesheet" href="css/animations.css?v=30">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500;600&family=Dancing+Script:wght@400;700&family=Cairo:wght@400;600;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
-  <button id="lang-toggle" class="lang-toggle">عربي</button>
+  <a class="skip-link" href="#btn-start" data-i18n="skipLink">Skip to gift creator</a>
+  <noscript><p class="noscript-note">This gift maker needs JavaScript to create and open gifts. Please enable JavaScript.</p></noscript>
+  <button id="lang-toggle" class="lang-toggle" aria-label="Switch language">عربي</button>
 
   <!-- SECTION 1: Hero / Landing -->
   <section id="section-hero" class="section active">
@@ -152,7 +153,7 @@
       <form id="customize-form" class="customize-form" onsubmit="return false;">
         <div class="form-group">
           <label for="recipient-name" data-i18n="nameLabel">Birthday person's name</label>
-          <input type="text" id="recipient-name" placeholder="Enter their name" data-i18n-ph="namePh" required>
+          <input type="text" id="recipient-name" placeholder="Enter their name" data-i18n-ph="namePh" required maxlength="60" autocomplete="off">
         </div>
 
         <div class="form-group occasion-field" data-for="birthday">
@@ -162,7 +163,7 @@
 
         <div class="form-group occasion-field" data-for="valentine" style="display:none;">
           <label for="love-reason" data-i18n="loveReasonLabel">What do you love about them?</label>
-          <input type="text" id="love-reason" placeholder="e.g., your smile lights up my world" data-i18n-ph="loveReasonPh">
+          <input type="text" id="love-reason" placeholder="e.g., your smile lights up my world" data-i18n-ph="loveReasonPh" maxlength="200">
         </div>
 
         <div class="form-group occasion-field" data-for="anniversary" style="display:none;">
@@ -176,7 +177,7 @@
 
         <div class="form-group occasion-field" data-for="thankYou" style="display:none;">
           <label for="thank-you-reason" data-i18n="thankReasonLabel">What are you thanking them for?</label>
-          <input type="text" id="thank-you-reason" placeholder="e.g., always being there for me" data-i18n-ph="thankReasonPh">
+          <input type="text" id="thank-you-reason" placeholder="e.g., always being there for me" data-i18n-ph="thankReasonPh" maxlength="200">
         </div>
 
         <div class="form-group">
@@ -203,7 +204,7 @@
 
         <div class="form-group" id="custom-message-group" style="display:none;">
           <label for="custom-message" data-i18n="yourMessage">Your Message</label>
-          <textarea id="custom-message" rows="6" placeholder="Write your heartfelt message here..." data-i18n-ph="customPh"></textarea>
+          <textarea id="custom-message" rows="6" placeholder="Write your heartfelt message here..." data-i18n-ph="customPh" maxlength="2000"></textarea>
         </div>
 
         <div class="form-group">
@@ -249,7 +250,7 @@
             <div class="song-choice-current">
               <span class="song-choice-note">♪</span>
               <span id="song-choice-name" data-i18n="songDefaultName">Topic default song</span>
-              <button type="button" id="song-choice-preview" class="song-preview-btn" title="Preview">▶</button>
+              <button type="button" id="song-choice-preview" class="song-preview-btn" aria-label="Preview song">▶</button>
             </div>
             <button type="button" id="song-choice-btn" class="btn-secondary">🎼 <span data-i18n="songChooseBtn">Choose a song</span></button>
             <div class="gallery-picker" id="song-choice-picker" style="display:none;">
@@ -258,8 +259,13 @@
                 <button type="button" id="song-choice-close" class="btn-remove">&times;</button>
               </div>
               <div id="song-choice-list"></div>
-            </div>
           </div>
+          <div class="theme-preview" id="theme-preview" aria-live="polite">
+            <span class="theme-preview-dot" id="theme-preview-dot" aria-hidden="true"></span>
+            <span class="theme-preview-text" id="theme-preview-text"></span>
+            <code class="theme-preview-hex" id="theme-preview-hex"></code>
+          </div>
+        </div>
         </div>
 
         <div class="form-actions">
@@ -292,12 +298,13 @@
       <p class="section-subtitle" data-i18n="shareSubtitle">Share this link with your loved one</p>
       <div class="share-box">
         <div class="share-link-container">
+          <label class="visually-hidden" for="share-link" data-i18n="shareLinkLabel">Gift link</label>
           <input type="text" id="share-link" class="share-link" readonly>
           <button type="button" id="btn-copy" class="btn-copy" data-i18n="copyBtn">Copy</button>
         </div>
         <div class="share-qr" id="share-qr">
-          <img id="qr-image" alt="QR Code" width="400" height="400">
-          <div><a id="qr-download" class="qr-download" download="birthday-gift-qr.png" data-i18n="downloadQr">Download QR code</a></div>
+          <img id="qr-image" alt="QR code for the gift link" width="400" height="400">
+          <div><a id="qr-download" class="qr-download" download="gift-qr.png" data-i18n="downloadQr">Download QR code</a></div>
         </div>
         <div class="share-actions">
           <button type="button" id="btn-open-link" class="btn-secondary" data-i18n="openBtn">Open in New Tab</button>
@@ -340,11 +347,11 @@
         <p class="cake-sub" data-i18n="cakeSub">Tap the candles to blow them out</p>
         <div class="cake-scene">
           <div class="candles-row" id="candles-row">
-            <button type="button" class="candle" aria-label="Blow out candle"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 1"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 2"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 3"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 4"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 5"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
           </div>
           <div class="cake-top"></div>
           <div class="cake-body"></div>
@@ -398,18 +405,18 @@
     </div>
   </div>
 
-  <!-- Audio -->
-  <audio id="bg-music" loop preload="auto">
-    <source src="assets/music/song.mp3" type="audio/mpeg">
-  </audio>
+  <!-- Audio: no src here on purpose — the track is set lazily only when
+       music is enabled and playback is requested, so opening the page
+       never downloads audio until it is needed. -->
+  <audio id="bg-music" loop preload="none"></audio>
 
   <!-- Music Controls -->
   <div class="music-controls" id="music-controls" style="display:none;">
-    <button id="btn-music-toggle" class="btn-music" title="Play/Pause Music">&#128264;</button>
+    <button id="btn-music-toggle" class="btn-music" aria-label="Play music" aria-pressed="false"><span aria-hidden="true" id="btn-music-icon">▶</span></button>
   </div>
 
   <!-- Tap-to-play music prompt (browsers block autoplay until a tap) -->
-  <button id="music-prompt" class="music-prompt" style="display:none;">&#127925; <span data-i18n="musicPrompt">Tap to play music</span></button>
+  <button id="music-prompt" class="music-prompt" style="display:none;" aria-label="Play background music">&#127925; <span data-i18n="musicPrompt">Tap to play music</span></button>
 
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loading-overlay" style="display:none;">
@@ -418,10 +425,10 @@
     <p class="loading-sub" id="loading-status"></p>
   </div>
 
-  <script src="js/animations.js?v=29"></script>
-  <script src="js/generator.js?v=29"></script>
-  <script src="js/share.js?v=29"></script>
-  <script src="js/i18n.js?v=29"></script>
-  <script src="js/app.js?v=29"></script>
+  <script src="js/animations.js?v=30"></script>
+  <script src="js/generator.js?v=30"></script>
+  <script src="js/share.js?v=30"></script>
+  <script src="js/i18n.js?v=30"></script>
+  <script src="js/app.js?v=30"></script>
 </body>
 </html>

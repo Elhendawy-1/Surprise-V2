@@ -1867,3 +1867,181 @@ html[dir="rtl"] .photo-slot .btn-remove {
     padding-bottom: 2rem;
   }
 }
+
+/* ===== Accessibility helpers / music states / theme preview (v30 audit) === */
+
+/* Screen-reader-only text (labels for icon-only inputs/buttons). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: hidden until keyboard focus. */
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  inset-inline-start: 0.5rem;
+  z-index: 3000;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-300%);
+  transition: transform var(--transition-fast);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.noscript-note {
+  max-width: 560px;
+  margin: 1rem auto;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  border: 2px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+/* Never let media overflow narrow viewports (320px safety). */
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+#qr-image {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+}
+
+/* Theme preview: live swatch + name + HEX before generation. */
+.theme-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+  padding: 0.7rem 1rem;
+  border: 2px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  font-size: 0.9rem;
+}
+
+.theme-preview-dot {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid var(--card-border);
+}
+
+.theme-preview-text {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.theme-preview-hex {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  direction: ltr;
+}
+
+/* Music control: safe-area aware, clear states beyond color alone. */
+.music-controls {
+  bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  inset-inline-end: 2rem;
+  right: 2rem;
+}
+
+html[dir="rtl"] .music-controls {
+  right: auto;
+  left: 2rem;
+}
+
+.lang-toggle {
+  bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  inset-inline-start: 2rem;
+  left: 2rem;
+}
+
+html[dir="rtl"] .lang-toggle {
+  left: auto;
+  right: 2rem;
+}
+
+.btn-music {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.btn-music:focus-visible,
+.music-prompt:focus-visible,
+#song-choice-preview:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* Loading: dotted ring + pause the decorative spin elsewhere. */
+.btn-music.loading::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px dotted var(--accent);
+  animation: spin 1s linear infinite;
+  pointer-events: none;
+}
+
+.btn-music[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Text label under the icon state is handled via aria-label in JS;
+   the visible glyph also changes shape (▶ / ⏸ / … / !) so state
+   never relies on color alone. */
+.btn-music .btn-music-state {
+  font-size: 0.65rem;
+  display: block;
+}
+
+.music-prompt {
+  bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
+}
+
+#song-choice-preview {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 480px) {
+  .music-controls {
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    inset-inline-end: 1rem;
+    right: 1rem;
+  }
+
+  .lang-toggle {
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    inset-inline-start: 1rem;
+    left: 1rem;
+  }
+}
