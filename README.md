@@ -2,7 +2,7 @@
 
 Create a beautiful animated gift page for someone special — Birthday, Valentine, Anniversary, Thank You, or Just Because — then share it with a link or QR code. When they open it, they get a full-screen scrolling celebration: greeting, your chosen photos with captions, personal message, music, floating hearts, flower petals, balloons, and confetti.
 
-**Live demo:** https://elhendawy-1.github.io/Surprise-V2/
+**Live demo:** [https://elhendawy-1.github.io/Surprise-V2/](https://elhendawy-1.github.io/Surprise-V2/) ✨
 
 No frameworks, no build step, no server — just open `index.html` or host it on GitHub Pages.
 
