@@ -21,6 +21,12 @@
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Lora', Georgia, serif;
   --font-script: 'Dancing Script', cursive;
+  /* Frosted-glass card (recipient message/details): tuned per theme so it
+     stays visible against that theme's --gradient-bg instead of the old
+     fixed rgba(255,255,255,.05) card, which was nearly invisible against
+     a white/cream background and only ever looked right on dark themes. */
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(230, 57, 70, 0.12);
 }
 
 /* Soft Romantic */
@@ -43,6 +49,8 @@
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Lora', Georgia, serif;
   --font-script: 'Dancing Script', cursive;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(248, 164, 200, 0.35);
 }
 
 /* Deep Romantic */
@@ -65,6 +73,8 @@
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Lora', Georgia, serif;
   --font-script: 'Dancing Script', cursive;
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(212, 175, 55, 0.25);
 }
 
 /* Dark Romantic */
@@ -87,6 +97,8 @@
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Lora', Georgia, serif;
   --font-script: 'Dancing Script', cursive;
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(201, 160, 220, 0.25);
 }
 
 /* Elegant */
@@ -109,6 +121,8 @@
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Lora', Georgia, serif;
   --font-script: 'Dancing Script', cursive;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(212, 175, 55, 0.3);
 }
 
 /* Warm and Cozy */
@@ -131,4 +145,6 @@
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Lora', Georgia, serif;
   --font-script: 'Dancing Script', cursive;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(212, 163, 115, 0.3);
 }

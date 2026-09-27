@@ -223,7 +223,11 @@ const App = {
         const btn = document.getElementById('btn-copy');
         const lang = this.state.lang || 'en';
         btn.textContent = success ? t('copiedBtn', lang) : 'Failed';
-        setTimeout(() => { btn.textContent = t('copyBtn', this.state.lang); }, 2000);
+        btn.classList.toggle('copy-success', !!success);
+        setTimeout(() => {
+          btn.textContent = t('copyBtn', this.state.lang);
+          btn.classList.remove('copy-success');
+        }, 2000);
       });
     });
 
@@ -447,7 +451,8 @@ const App = {
     if (!el) return;
     el.textContent = text || '';
     el.style.display = text ? 'block' : 'none';
-    el.style.color = ok ? '#2e7d32' : '#c62828';
+    el.classList.toggle('status-ok', !!ok);
+    el.classList.toggle('status-bad', !ok);
   },
 
   // Handle pasted URL - show live preview + clear OK / error feedback

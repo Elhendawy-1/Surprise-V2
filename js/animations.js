@@ -1,7 +1,13 @@
 /* ===== Animations Module ===== */
 
 const Animations = {
-  hearts: [],
+  // Interval IDs for looping heart/petal/balloon effects (started by
+  // startFloatingHearts/startPetalDrift/startBalloonDrift, cleared by
+  // stopFloatingHearts). Named distinctly from the hearts() method below -
+  // they used to share the "hearts" key on this object, which silently
+  // made this array unreachable (the method always won) and broke every
+  // start/stop call. Kept as an array of setInterval ids, same as before.
+  heartTimerIds: [],
   particles: [],
 
   // Create a floating heart
@@ -29,14 +35,14 @@ const Animations = {
     const id = setInterval(() => {
       this.createHeart(container);
     }, interval);
-    this.hearts.push(id);
+    this.heartTimerIds.push(id);
     return id;
   },
 
   // Stop floating hearts
   stopFloatingHearts() {
-    this.hearts.forEach(id => clearInterval(id));
-    this.hearts = [];
+    this.heartTimerIds.forEach(id => clearInterval(id));
+    this.heartTimerIds = [];
   },
 
   // Create particle burst
@@ -211,7 +217,7 @@ const Animations = {
   // Gentle ongoing petal drift (slow, sparse - stays smooth while scrolling)
   startPetalDrift(container, interval = 2600) {
     const id = setInterval(() => this.dropPetal(container), interval);
-    this.hearts.push(id);
+    this.heartTimerIds.push(id);
     return id;
   },
 
@@ -267,7 +273,7 @@ const Animations = {
 
   startBalloonDrift(container, interval = 5200) {
     const id = setInterval(() => this.riseBalloon(container), interval);
-    this.hearts.push(id);
+    this.heartTimerIds.push(id);
     return id;
   },
 
