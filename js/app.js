@@ -257,10 +257,12 @@ const App = {
       this.showSection('hero');
     });
 
-    // Music controls
-    document.getElementById('btn-music-toggle').addEventListener('click', () => {
+    // Music controls (creator flow). Assigned via onclick (not
+    // addEventListener) so the recipient gift page can overwrite it
+    // with its own track-fallback controller without double-firing.
+    document.getElementById('btn-music-toggle').onclick = () => {
       this.toggleMusic();
-    });
+    };
 
     // Song choice (pick + preview a site song)
     document.getElementById('song-choice-btn').addEventListener('click', (e) => {
@@ -924,6 +926,8 @@ const App = {
   // Generate preview (guarded against double taps)
   async generatePreview() {
     if (this.isPreviewing) return;
+    // Never let the form song-preview keep playing on the end pages.
+    this.stopSongPreview();
     const name = document.getElementById('recipient-name').value.trim();
     if (!name) {
       alert(t('alertName', this.state.lang));
@@ -956,6 +960,8 @@ const App = {
   // Generate share link (guarded: one run at a time, no duplicate uploads)
   async generateLink() {
     const lang = this.state.lang || 'en';
+    // The form preview must not bleed onto the share (end) page.
+    this.stopSongPreview();
     if (this.isGenerating) {
       this.setLoadingStatus(t('generatingBusy', lang));
       return;
@@ -1304,10 +1310,18 @@ const App = {
     // Lazy: the <audio> element carries no src on page load — the track
     // is assigned here only, so no audio downloads until a gift with
     // music is actually opened.
+    // The floating button AND the end-page (closing section) button are
+    // wired to the same toggle, so pause / resume works everywhere —
+    // including at the end of the gift.
     if (data.music !== false) {
       this.stopSongPreview();
       const musicEl = document.getElementById('bg-music');
       this.cleanupRecipientMusic();
+      // Fresh start even when a previous gift played in this same page
+      // lifetime (second gift without reload): stop old playback first so
+      // the new toggle's paused/playing checks start from the truth.
+      try { musicEl.pause(); } catch (e) { /* ignore */ }
+      try { musicEl.currentTime = 0; } catch (e) { /* ignore */ }
       const topicTracks = {
         birthday: [],
         valentine: ['https://upload.wikimedia.org/wikipedia/commons/3/3e/Audionautix-com-ccby-furelise.mp3'],
@@ -1321,17 +1335,33 @@ const App = {
         .concat(['assets/music/song.mp3']);
       let trackIdx = 0;
       let musicState = 'idle'; // idle | loading | playing | paused | error
+      let hasPlayed = false;
+      // True once the user has tapped play at least once. Distinguishes
+      // "error with a gesture pending" (safe to auto-try the next
+      // fallback) from "error with no gesture" (stay on the invite).
+      // With lazy loading the latter should not happen, but stay safe.
+      let playRequested = false;
       const prompt = document.getElementById('music-prompt');
       const toggle = document.getElementById('btn-music-toggle');
       const controls = document.getElementById('music-controls');
+      const endBtn = document.getElementById('btn-music-end');
+
+      const endLabel = (next, lang) => {
+        if (next === 'playing') return '⏸ ' + t('musicPause', lang);
+        if (next === 'loading') return '… ' + t('musicLoading', lang);
+        if (next === 'error') return '↻ ' + t('musicError', lang);
+        return '▶ ' + t('musicPlay', lang);
+      };
 
       const setMusicState = (next) => {
         musicState = next;
+        this.recipientMusicState = next;
         const lang = this.state.lang || 'en';
         const icon = document.getElementById('btn-music-icon');
         toggle.classList.remove('playing', 'play-hint', 'loading');
         toggle.removeAttribute('disabled');
         if (next === 'playing') {
+          hasPlayed = true;
           if (prompt) prompt.style.display = 'none';
           controls.style.display = 'block';
           if (icon) icon.textContent = '⏸';
@@ -1346,24 +1376,49 @@ const App = {
           toggle.setAttribute('aria-pressed', 'false');
           toggle.classList.add('loading');
         } else if (next === 'error') {
+          // Keep both controls visible: floating button shows "!" and
+          // the prompt stays up so a tap retries the next fallback track.
           controls.style.display = 'block';
+          if (prompt) prompt.style.display = 'block';
           if (icon) icon.textContent = '!';
           toggle.setAttribute('aria-label', t('musicError', lang));
           toggle.setAttribute('aria-pressed', 'false');
         } else {
-          // paused / idle: invite a tap without covering content
+          // paused / idle: the song is ready but not playing.
+          // Keep the floating + end-page buttons visible (never hide the
+          // controls once music is enabled) and invite a tap.
+          controls.style.display = 'block';
+          // Before the first play the prompt is the main invite; after a
+          // pause it stays hidden so it never covers the end of the gift.
+          if (prompt) prompt.style.display = hasPlayed ? 'none' : 'block';
           if (icon) icon.textContent = '▶';
           toggle.setAttribute('aria-label', t('musicPlay', lang));
           toggle.setAttribute('aria-pressed', 'false');
           toggle.classList.add('play-hint');
         }
+        if (endBtn) {
+          endBtn.style.display = '';
+          endBtn.textContent = endLabel(next, lang);
+          endBtn.setAttribute('aria-label', next === 'playing' ? t('musicPause', lang) : (next === 'error' ? t('musicError', lang) : (next === 'loading' ? t('musicLoading', lang) : t('musicPlay', lang))));
+          endBtn.setAttribute('aria-pressed', next === 'playing' ? 'true' : 'false');
+        }
       };
 
       const loadTrack = () => {
         setMusicState('loading');
-        musicEl.preload = 'none';
+        musicEl.preload = 'auto';
+        try { musicEl.loop = true; } catch (e) { /* ignore */ }
         musicEl.src = tracks[trackIdx];
         musicEl.load();
+      };
+
+      // Lazy first paint: point at the first track but download nothing
+      // until the user's first tap (preload none + no load() call).
+      const prepareTrack = () => {
+        musicEl.preload = 'none';
+        try { musicEl.loop = true; } catch (e) { /* ignore */ }
+        musicEl.src = tracks[trackIdx];
+        setMusicState('paused');
       };
 
       const onWaiting = () => { if (musicState !== 'error') setMusicState('loading'); };
@@ -1371,8 +1426,32 @@ const App = {
       const onPause = () => { if (musicState === 'playing') setMusicState('paused'); };
       const onEnded = () => setMusicState('paused');
       const onTrackError = () => {
-        // A mid-playback stall is retried on the same track; a load
-        // failure advances through the fallback chain instead.
+        // No gesture yet: nothing should be downloading (lazy), so any
+        // error here just points at the next fallback and stays on the
+        // play invite — never a spinner dead-end, never autoplay.
+        if (!playRequested) {
+          if (trackIdx < tracks.length - 1) {
+            trackIdx++;
+            musicEl.preload = 'none';
+            musicEl.src = tracks[trackIdx];
+          }
+          setMusicState('paused');
+          return;
+        }
+        // Gesture pending but nothing played yet (first track 404'd):
+        // auto-try the next fallback so one tap is enough.
+        if (!hasPlayed) {
+          if (trackIdx < tracks.length - 1) {
+            trackIdx++;
+            loadTrack();
+            musicEl.play().catch(() => { /* waiting/error events update UI */ });
+          } else {
+            setMusicState('error');
+          }
+          return;
+        }
+        // After playback started: a mid-playback stall is retried on the
+        // same track; a load failure advances through the fallback chain.
         if (musicEl.currentTime > 0 && trackIdx >= tracks.length - 1) {
           musicEl.play().catch(() => setMusicState('error'));
           return;
@@ -1380,6 +1459,8 @@ const App = {
         if (trackIdx < tracks.length - 1) {
           trackIdx++;
           loadTrack();
+          // Auto-try playing the next fallback so one tap is enough.
+          musicEl.play().catch(() => { /* waiting/error events update UI */ });
         } else {
           setMusicState('error');
         }
@@ -1395,49 +1476,109 @@ const App = {
         musicEl.removeEventListener('pause', onPause);
         musicEl.removeEventListener('ended', onEnded);
         musicEl.removeEventListener('error', onTrackError);
+        this.recipientMusicToggle = null;
+        this.recipientMusicState = null;
+        this.recipientEndLabel = null;
+        // Detach stale closures so a later creator-flow button can never
+        // drive the old gift's state machine.
+        try {
+          if (toggle) toggle.onclick = null;
+          if (prompt) prompt.onclick = null;
+          if (endBtn) endBtn.onclick = null;
+        } catch (e) { /* ignore */ }
       };
 
-      loadTrack();
-
       const startMusic = () => {
-        if (musicState === 'playing' || musicState === 'loading') return;
+        if (musicState === 'playing') return;
+        if (musicState === 'loading') {
+          // A tap during buffering nudges playback instead of dying silent.
+          musicEl.play().catch(() => {});
+          return;
+        }
         if (musicState === 'error') {
-          // Retry the failed track on explicit tap.
+          // Retry from the first track on explicit tap.
+          trackIdx = 0;
+          loadTrack();
+        } else if (!musicEl.src && !musicEl.currentSrc) {
           loadTrack();
         }
+        playRequested = true;
         setMusicState('loading');
+        // State flips to playing via the 'playing' event only (no .then
+        // override, so a fast pause in between can't be clobbered).
         musicEl.play().catch(() => {
-          if (musicState === 'loading') setMusicState('paused');
+          // Autoplay blocked or slow network: stay resumable, and keep
+          // the prompt up so the next tap clearly retries.
+          if (musicEl.paused) {
+            hasPlayed = false;
+            setMusicState('paused');
+          }
         });
       };
 
-      if (prompt) {
-        prompt.style.display = 'block';
-        prompt.onclick = startMusic;
-      } else {
-        controls.style.display = 'block';
-      }
-      setMusicState('paused');
-      // Fallback: any first tap anywhere also starts the music.
-      // Guarded so re-renders (e.g. language switch) never stack it.
-      if (!document.dataset.musicKick) {
-        document.dataset.musicKick = '1';
-        document.addEventListener('click', () => {
-          const mus = document.getElementById('bg-music');
-          if (mus && mus.paused && document.getElementById('recipient-view').style.display === 'block') {
-            mus.play().catch(() => {});
-          }
-        }, { once: true });
-      }
-      // Dynamic play / pause / retry toggle.
-      toggle.onclick = () => {
-        if (musicEl.paused) {
+      // Single toggle used by the floating button, the end-page button,
+      // the prompt, and the first-tap-anywhere fallback — one source of
+      // truth so pause / resume can never desync. Error state always
+      // restarts (some browsers leave .paused false after a load error).
+      const toggleRecipientMusic = () => {
+        if (musicState === 'error' || musicEl.paused) {
           startMusic();
         } else {
           musicEl.pause();
           setMusicState('paused');
         }
       };
+      this.recipientMusicToggle = toggleRecipientMusic;
+      this.recipientMusicState = musicState;
+      this.recipientEndLabel = endLabel;
+
+      prepareTrack();
+      // Ready-to-play: controls (floating + end-page) stay visible, the
+      // prompt invites the first tap. Nothing downloads or autoplays
+      // until the user taps, satisfying browser autoplay policies.
+
+      if (prompt) {
+        prompt.onclick = toggleRecipientMusic;
+      }
+      // Fallback: any first tap anywhere also starts the music through
+      // the same toggle, so UI state always stays in sync.
+      // Re-armed per gift (old pending handler removed first) so every
+      // gift gets the fallback without stacking duplicate listeners.
+      if (this._musicKickHandler) {
+        try { document.removeEventListener('click', this._musicKickHandler); } catch (e) { /* ignore */ }
+      }
+      this._musicKickHandler = (e) => {
+        // Taps directly on the music buttons already toggle via their own
+        // onclick — ignore them here or one gesture would toggle twice
+        // (onclick + bubble to document = two concurrent play() calls).
+        try {
+          if (e && e.target && e.target.closest &&
+              e.target.closest('#music-controls, #music-prompt, #btn-music-end')) {
+            return;
+          }
+        } catch (err) { /* ignore — fall through to toggle */ }
+        if (document.getElementById('recipient-view').style.display !== 'block') return;
+        const mus = document.getElementById('bg-music');
+        if (mus && mus.paused && App.recipientMusicToggle) {
+          App.recipientMusicToggle();
+        }
+      };
+      document.addEventListener('click', this._musicKickHandler, { once: true });
+      // Floating play / pause / retry toggle (overwrites the creator-flow
+      // handler — onclick assignment, so no double-firing).
+      toggle.onclick = toggleRecipientMusic;
+      // End-page play / pause / retry toggle in the closing section.
+      if (endBtn) {
+        endBtn.onclick = toggleRecipientMusic;
+      }
+    } else {
+      // Gift without music: tear down any previous gift's controller
+      // first (second gift in one page lifetime), then hide everything.
+      this.cleanupRecipientMusic();
+      document.getElementById('music-controls').style.display = 'none';
+      document.getElementById('music-prompt').style.display = 'none';
+      const endBtn = document.getElementById('btn-music-end');
+      if (endBtn) endBtn.style.display = 'none';
     }
 
     // Opening celebration: heart + flower burst, petal shower,
@@ -1471,6 +1612,11 @@ const App = {
       try { this.recipientMusicCleanup(); } catch (e) { /* ignore */ }
       this.recipientMusicCleanup = null;
     }
+    // Drop any pending first-tap fallback from the previous gift.
+    if (this._musicKickHandler) {
+      try { document.removeEventListener('click', this._musicKickHandler); } catch (e) { /* ignore */ }
+      this._musicKickHandler = null;
+    }
   },
 
   // Re-render translatable gift content after a language switch
@@ -1491,6 +1637,31 @@ const App = {
     const closingHearts = document.querySelector('#recipient-view .recipient-closing-hearts');
     if (closingHearts) {
       closingHearts.textContent = (this.occasionMeta[occ] || this.occasionMeta.birthday).closing;
+    }
+    // Keep the end-page music button translated without breaking its
+    // play / pause state (single label helper, shared with setMusicState).
+    const endBtn = document.getElementById('btn-music-end');
+    if (endBtn && endBtn.style.display !== 'none') {
+      const st = this.recipientMusicState || 'paused';
+      endBtn.textContent = (this.recipientEndLabel || ((s, l) => {
+        if (s === 'playing') return '⏸ ' + t('musicPause', l);
+        if (s === 'loading') return '… ' + t('musicLoading', l);
+        if (s === 'error') return '↻ ' + t('musicError', l);
+        return '▶ ' + t('musicPlay', l);
+      }))(st, lang);
+      endBtn.setAttribute('aria-label', st === 'playing' ? t('musicPause', lang) : (st === 'error' ? t('musicError', lang) : (st === 'loading' ? t('musicLoading', lang) : t('musicPlay', lang))));
+    }
+    // Keep the floating toggle + prompt labels translated too.
+    const toggle = document.getElementById('btn-music-toggle');
+    if (toggle && document.getElementById('music-controls').style.display !== 'none') {
+      const st = this.recipientMusicState || 'paused';
+      toggle.setAttribute('aria-label', st === 'playing' ? t('musicPause', lang) : (st === 'error' ? t('musicError', lang) : (st === 'loading' ? t('musicLoading', lang) : t('musicPlay', lang))));
+    }
+    const prompt = document.getElementById('music-prompt');
+    if (prompt && prompt.style.display !== 'none') {
+      const span = prompt.querySelector('[data-i18n="musicPrompt"]');
+      if (span) span.textContent = t('musicPrompt', lang);
+      else prompt.textContent = '🎵 ' + t('musicPrompt', lang);
     }
     this.renderCenterpiece(occ, lang);
     this.renderRecipientDetails(data);
@@ -1664,12 +1835,20 @@ const App = {
     root.addEventListener('mouseleave', resetAll);
   },
 
-  // Toggle music (recipient gift page control)
+  // Toggle music. On the gift page this delegates to the recipient
+  // track-fallback controller (floating + end-page buttons stay in
+  // sync); in the creator flow it toggles whatever is loaded, if any.
   toggleMusic() {
+    if (this.recipientMusicToggle &&
+        document.getElementById('recipient-view').style.display === 'block') {
+      this.recipientMusicToggle();
+      return;
+    }
     const music = document.getElementById('bg-music');
     const btn = document.getElementById('btn-music-toggle');
     const icon = document.getElementById('btn-music-icon');
     const lang = this.state.lang || 'en';
+    if (!music || (!music.src && !music.currentSrc)) return;
 
     if (music.paused) {
       music.play().then(() => {
@@ -1705,6 +1884,22 @@ const App = {
     }
     document.getElementById('music-controls').style.display = 'none';
     document.getElementById('music-prompt').style.display = 'none';
+    const musicEnd = document.getElementById('btn-music-end');
+    if (musicEnd) {
+      musicEnd.style.display = 'none';
+      try { musicEnd.onclick = null; } catch (e) { /* ignore */ }
+    }
+    const musicPrompt = document.getElementById('music-prompt');
+    if (musicPrompt) {
+      try { musicPrompt.onclick = null; } catch (e) { /* ignore */ }
+    }
+    // Restore the creator-flow toggle (cleanup nulled the gift handler).
+    const musicToggle = document.getElementById('btn-music-toggle');
+    if (musicToggle) {
+      musicToggle.onclick = () => {
+        this.toggleMusic();
+      };
+    }
     Animations.stopFloatingHearts();
     this.isGenerating = false;
     this.isPreviewing = false;

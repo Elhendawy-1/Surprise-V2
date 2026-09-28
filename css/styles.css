@@ -1591,6 +1591,16 @@ html[dir="rtl"] .photo-slot .btn-remove {
   animation: musicInvite 2s ease infinite;
 }
 
+/* End-page music toggle (closing section): in-flow button so the
+   recipient can pause / resume the song right at the end of the gift. */
+.music-end-btn {
+  margin-top: 1.5rem;
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 /* Custom relationship input */
 .custom-relationship-wrap {
   max-width: 500px;
