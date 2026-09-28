@@ -341,6 +341,12 @@ const App = {
       this.state.currentSection = sectionId;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // Eager: warm the preview track as soon as the personalize form
+    // opens, so the song button plays instantly.
+    if (sectionId === 'customize') {
+      this.warmupSongPreview();
+    }
   },
 
   // Who each topic is for. Birthdays fit everyone; romantic topics
@@ -707,12 +713,15 @@ const App = {
     const label = document.getElementById('song-choice-name');
     if (label) label.textContent = this.state.songChoiceName;
     this.stopSongPreview();
+    // Eager: preload the picked song right away for instant preview.
+    this.warmupSongPreview(url);
     document.getElementById('song-choice-picker').style.display = 'none';
     this.renderSongChoice(this.siteGallery.musicCache || []);
   },
 
   // Preview the chosen song right in the form (tap again to stop).
-  // Lazy: nothing downloads until the creator taps preview.
+  // Eager: the track is preloaded (warmed up when the form opens) and
+  // fully loaded before play() so the preview starts instantly.
   previewSongChoice() {
     const btn = document.getElementById('song-choice-preview');
     if (this.songPreviewAudio && !this.songPreviewAudio.paused) {
@@ -727,11 +736,12 @@ const App = {
     }
     const src = this.state.songChoice || 'assets/music/song.mp3';
     const audio = new Audio();
-    audio.preload = 'none';
+    audio.preload = 'auto';
     audio.onerror = () => this.stopSongPreview();
     audio.onended = () => this.stopSongPreview();
     this.songPreviewAudio = audio;
     audio.src = src;
+    try { audio.load(); } catch (e) { /* ignore */ }
     if (btn) btn.setAttribute('aria-label', t('musicPause', this.state.lang));
     audio.play().then(() => {
       if (btn) {
@@ -755,6 +765,22 @@ const App = {
       btn.classList.remove('playing');
       btn.setAttribute('aria-label', t('musicPlay', this.state.lang));
     }
+  },
+
+  // Eager warmup: start downloading the preview track as soon as the
+  // personalize form opens (or a song is picked), so the preview button
+  // plays instantly from cache. Never plays by itself — pure preload.
+  warmupSongPreview(src) {
+    const url = src || this.state.songChoice || 'assets/music/song.mp3';
+    if (this.songWarmupAudio && this.songWarmupUrl === url) return;
+    try {
+      const warm = new Audio();
+      warm.preload = 'auto';
+      warm.src = url;
+      warm.load();
+      this.songWarmupAudio = warm;
+      this.songWarmupUrl = url;
+    } catch (e) { /* ignore */ }
   },
 
   // Per-topic identity: icon, centerpiece, gallery heading, closing hearts
@@ -1875,6 +1901,8 @@ const App = {
       this.countdownTimer = null;
     }
     this.stopSongPreview();
+    this.songWarmupAudio = null;
+    this.songWarmupUrl = '';
     this.cleanupRecipientMusic();
     const bg = document.getElementById('bg-music');
     if (bg) {
