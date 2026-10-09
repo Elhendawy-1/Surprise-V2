@@ -350,14 +350,9 @@
   animation: heartbeat 1.5s ease infinite;
 }
 
-/* Scroll indicator pulse */
-@keyframes scrollPulse {
-  0%, 100% { opacity: 0.5; transform: translateY(0); }
-  50% { opacity: 1; transform: translateY(10px); }
-}
-
+/* Scroll cue: one quiet entrance, not an endless bounce. */
 .recipient-scroll-hint .scroll-arrow {
-  animation: scrollPulse 2s ease infinite;
+  animation: fadeIn 1.2s ease both;
 }
 
 /* Comfort: honor reduced-motion requests - everything rests visible.
@@ -390,6 +385,7 @@
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+    rotate: none !important;
   }
 
   .loading-spinner {
