@@ -870,6 +870,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  scroll-padding-bottom: 7rem;
 }
 
 .recipient-bg {
@@ -1050,7 +1051,12 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 36px 13px 8px;
+  padding: 36px 16px 8px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  scroll-margin: 1rem;
+  touch-action: manipulation;
 }
 
 .candle .stick {
@@ -1339,15 +1345,25 @@ body {
   background: var(--card-bg);
   border: 1px solid transparent;
   opacity: 0;
-  transform: translateY(40px) scale(0.97);
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateY(20px) scale(0.98);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
+  scroll-margin: 1rem;
 }
 
 .recipient-gallery-item.visible {
   opacity: 1;
   transform: translateY(0) scale(1);
   transition-delay: 0s;
+}
+
+/* Restrained stagger when several photos enter together (capped). */
+.recipient-gallery-item:nth-child(3n + 2).visible {
+  transition-delay: 0.06s;
+}
+
+.recipient-gallery-item:nth-child(3n).visible {
+  transition-delay: 0.12s;
 }
 
 /* Rich but soft hover / tap interactions on gift photos */
@@ -1479,7 +1495,7 @@ body {
 .recipient-details-card .detail-value {
   font-family: var(--font-heading);
   font-size: 1.5rem;
-  color: var(--primary);
+  color: var(--primary-ink, var(--primary));
 }
 
 /* Live birthday countdown */
@@ -1502,23 +1518,47 @@ body {
 .countdown-num {
   font-family: var(--font-heading);
   font-size: 1.6rem;
-  color: var(--primary);
+  color: var(--primary-ink, var(--primary));
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .countdown-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--text-light);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 0.2rem;
 }
 
+/* RTL: keep countdown order + numerals LTR so they never scramble. */
+html[dir="rtl"] .countdown-grid {
+  direction: ltr;
+}
+
+html[dir="rtl"] .countdown-label {
+  direction: rtl;
+}
+
 /* Closing Section */
 .recipient-closing-section {
   min-height: 50vh;
   background: rgba(0, 0, 0, 0.02);
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Keep keyboard focus visible above fixed pills/bars. */
+.recipient-gallery-item,
+.recipient-message-card,
+.recipient-details-card,
+.candle,
+.btn-music,
+.music-prompt,
+#btn-blow,
+#btn-relight {
+  scroll-margin-bottom: 6rem;
 }
 
 .recipient-closing {

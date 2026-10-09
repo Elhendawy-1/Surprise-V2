@@ -335,7 +335,7 @@
         <div class="recipient-greeting" id="recipient-greeting"></div>
         <div class="recipient-scroll-hint">
           <span data-i18n="scrollHint">Scroll down to read your message</span>
-          <div class="scroll-arrow">&#8595;</div>
+          <div class="scroll-arrow" aria-hidden="true">&#8595;</div>
         </div>
       </div>
     </div>
@@ -347,11 +347,11 @@
         <p class="cake-sub" data-i18n="cakeSub">Tap the candles to blow them out</p>
         <div class="cake-scene">
           <div class="candles-row" id="candles-row">
-            <button type="button" class="candle" aria-label="Blow out candle 1"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 2"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 3"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 4"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 5"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 1" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 2" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 3" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 4" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 5" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
           </div>
           <div class="cake-top"></div>
           <div class="cake-body"></div>
@@ -368,7 +368,7 @@
     <!-- Topic Centerpiece Section (valentine / thank-you / just-because) -->
     <div class="recipient-section recipient-centerpiece-section" id="recipient-centerpiece" style="display:none;">
       <div class="centerpiece-wrap reveal">
-        <div class="centerpiece-visual" id="centerpiece-visual"></div>
+        <div class="centerpiece-visual" id="centerpiece-visual" aria-hidden="true"></div>
         <h3 class="centerpiece-heading" id="centerpiece-heading"></h3>
         <p class="centerpiece-sub" id="centerpiece-sub"></p>
       </div>
@@ -399,7 +399,7 @@
     <!-- Footer Section -->
     <div class="recipient-section recipient-closing-section">
       <div class="recipient-closing">
-        <div class="recipient-closing-hearts">&#10084; &#10084; &#10084;</div>
+        <div class="recipient-closing-hearts" aria-hidden="true">&#10084; &#10084; &#10084;</div>
         <div class="recipient-closing-text" id="recipient-closing-text" data-i18n="closingText">Made with love</div>
       </div>
     </div>

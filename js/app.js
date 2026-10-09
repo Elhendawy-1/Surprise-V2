@@ -1589,6 +1589,7 @@ const App = {
       document.dataset.ambientWatch = '1';
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.getElementById('recipient-view').style.display === 'block') {
+          if (Animations.calmMode && Animations.calmMode()) return;
           Animations.stopFloatingHearts();
           Animations.startFloatingHearts(document.getElementById('recipient-view'), 1400);
           Animations.startPetalDrift(document.getElementById('recipient-view'), 2800);
@@ -1656,12 +1657,13 @@ const App = {
       document.getElementById('recipient-details-content').innerHTML = `
         <div class="detail-label">${t('cdLabel', lang)}</div>
         <div class="detail-value">${turning}</div>
-        <div class="countdown-grid">
+        <div class="countdown-grid" aria-hidden="true">
           <div class="countdown-box"><div class="countdown-num" id="cd-d">--</div><div class="countdown-label">${t('cdDays', lang)}</div></div>
           <div class="countdown-box"><div class="countdown-num" id="cd-h">--</div><div class="countdown-label">${t('cdHours', lang)}</div></div>
           <div class="countdown-box"><div class="countdown-num" id="cd-m">--</div><div class="countdown-label">${t('cdMins', lang)}</div></div>
           <div class="countdown-box"><div class="countdown-num" id="cd-s">--</div><div class="countdown-label">${t('cdSecs', lang)}</div></div>
         </div>
+        <div class="visually-hidden" role="status" id="cd-status"></div>
       `;
       this.startBirthdayCountdown(dob);
     } else if (details) {
@@ -1681,6 +1683,7 @@ const App = {
     const birthDate = new Date(dob);
     if (isNaN(birthDate.getTime())) return;
     if (this.countdownTimer) clearInterval(this.countdownTimer);
+    this._cdMinuteKey = null;
     const set = (id, v) => {
       const el = document.getElementById(id);
       if (el) el.textContent = String(v).padStart(2, '0');
@@ -1693,19 +1696,33 @@ const App = {
         target = new Date(now.getFullYear() + 1, birthDate.getMonth(), birthDate.getDate());
       }
       const diff = target - new Date();
+      const statusEl = document.getElementById('cd-status');
       if (diff <= 0) {
         set('cd-d', 0); set('cd-h', 0); set('cd-m', 0); set('cd-s', 0);
         const label = document.querySelector('#recipient-details-content .detail-label');
         if (label) label.textContent = t('todayText', this.state.lang);
+        if (statusEl) statusEl.textContent = t('todayText', this.state.lang);
         if (this.countdownTimer) clearInterval(this.countdownTimer);
         this.countdownTimer = null;
         return;
       }
       const s = Math.floor(diff / 1000);
-      set('cd-d', Math.floor(s / 86400));
-      set('cd-h', Math.floor(s % 86400 / 3600));
-      set('cd-m', Math.floor(s % 3600 / 60));
+      const d = Math.floor(s / 86400);
+      const h = Math.floor(s % 86400 / 3600);
+      const m = Math.floor(s % 3600 / 60);
+      set('cd-d', d);
+      set('cd-h', h);
+      set('cd-m', m);
       set('cd-s', s % 60);
+      // Screen-reader summary: announce at most once per minute, never every second.
+      const minuteKey = d + ':' + h + ':' + m;
+      if (statusEl && this._cdMinuteKey !== minuteKey) {
+        this._cdMinuteKey = minuteKey;
+        const lang = this.state.lang || 'en';
+        statusEl.textContent = lang === 'ar'
+          ? `متبقي ${d} يوم، ${h} ساعة، ${m} دقيقة`
+          : `${d} days, ${h} hours, ${m} minutes left`;
+      }
     };
     this.countdownTimer = setInterval(update, 1000);
     update();
@@ -1715,7 +1732,21 @@ const App = {
   // to blow it out with a smoke puff. All out = wish + confetti.
   setupCake() {
     const row = document.getElementById('candles-row');
-    if (!row || row.dataset.wired) return;
+    if (!row) return;
+    if (row.dataset.wired) {
+      // Second gift in one page lifetime: restore fresh lit candles.
+      row.querySelectorAll('.candle').forEach(c => {
+        c.classList.remove('out');
+        c.setAttribute('aria-pressed', 'false');
+      });
+      const wishEl = document.getElementById('wish-text');
+      if (wishEl) wishEl.style.display = 'none';
+      const blowEl = document.getElementById('btn-blow');
+      if (blowEl) blowEl.style.display = '';
+      const relightEl = document.getElementById('btn-relight');
+      if (relightEl) relightEl.style.display = 'none';
+      return;
+    }
     row.dataset.wired = '1';
     const candles = Array.from(row.querySelectorAll('.candle'));
     const wish = document.getElementById('wish-text');
@@ -1726,6 +1757,7 @@ const App = {
     const blowOne = (c) => {
       if (c.classList.contains('out')) return;
       c.classList.add('out');
+      c.setAttribute('aria-pressed', 'true');
       if (row.querySelectorAll('.candle:not(.out)').length === 0) {
         wish.style.display = 'block';
         blowBtn.style.display = 'none';
@@ -1740,7 +1772,10 @@ const App = {
       candles.forEach((c, i) => setTimeout(() => blowOne(c), i * 200));
     });
     relightBtn.addEventListener('click', () => {
-      candles.forEach(c => c.classList.remove('out'));
+      candles.forEach(c => {
+        c.classList.remove('out');
+        c.setAttribute('aria-pressed', 'false');
+      });
       wish.style.display = 'none';
       relightBtn.style.display = 'none';
       blowBtn.style.display = 'inline-block';

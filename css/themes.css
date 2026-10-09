@@ -4,6 +4,7 @@
 :root,
 [data-theme="classic"] {
   --primary: #e63946;
+  --primary-ink: #b4232e;
   --primary-light: #ff6b6b;
   --secondary: #f1faee;
   --accent: #ffd700;
@@ -32,13 +33,14 @@
 /* Soft Romantic */
 [data-theme="soft"] {
   --primary: #f8a4c8;
+  --primary-ink: #a4134f;
   --primary-light: #fcd5ce;
   --secondary: #fce4ec;
   --accent: #ffffff;
   --bg: #fff5f5;
   --bg-alt: #fce4ec;
   --text: #5d4037;
-  --text-light: #8d6e63;
+  --text-light: #6d4c41;
   --card-bg: #ffffff;
   --card-border: #f8bbd0;
   --card-hover: #fce4ec;
@@ -56,6 +58,7 @@
 /* Deep Romantic */
 [data-theme="deep"] {
   --primary: #800020;
+  --primary-ink: #e6c84d;
   --primary-light: #a52a2a;
   --secondary: #b76e79;
   --accent: #d4af37;
@@ -80,6 +83,7 @@
 /* Dark Romantic */
 [data-theme="dark"] {
   --primary: #c9a0dc;
+  --primary-ink: #c9a0dc;
   --primary-light: #dfc0ef;
   --secondary: #4a1a1a;
   --accent: #e0e0e0;
@@ -104,13 +108,14 @@
 /* Elegant */
 [data-theme="elegant"] {
   --primary: #d4af37;
+  --primary-ink: #7a5c00;
   --primary-light: #e6c84d;
   --secondary: #f5f5f5;
   --accent: #333333;
   --bg: #fafafa;
   --bg-alt: #f5f5f5;
   --text: #333333;
-  --text-light: #777777;
+  --text-light: #595959;
   --card-bg: #ffffff;
   --card-border: #e0e0e0;
   --card-hover: #f5f5f5;
@@ -128,6 +133,7 @@
 /* Warm and Cozy */
 [data-theme="warm"] {
   --primary: #d4a373;
+  --primary-ink: #8a5a2b;
   --primary-light: #e6be91;
   --secondary: #faedcd;
   --accent: #e9edc9;

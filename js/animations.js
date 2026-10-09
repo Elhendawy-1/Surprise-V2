@@ -32,6 +32,7 @@ const Animations = {
 
   // Start continuous floating hearts
   startFloatingHearts(container, interval = 800) {
+    if (this.calmMode()) return null;
     const id = setInterval(() => {
       this.createHeart(container);
     }, interval);
@@ -216,6 +217,7 @@ const Animations = {
 
   // Gentle ongoing petal drift (slow, sparse - stays smooth while scrolling)
   startPetalDrift(container, interval = 2600) {
+    if (this.calmMode()) return null;
     const id = setInterval(() => this.dropPetal(container), interval);
     this.heartTimerIds.push(id);
     return id;
@@ -272,6 +274,7 @@ const Animations = {
   },
 
   startBalloonDrift(container, interval = 5200) {
+    if (this.calmMode()) return null;
     const id = setInterval(() => this.riseBalloon(container), interval);
     this.heartTimerIds.push(id);
     return id;
