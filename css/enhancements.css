@@ -1,0 +1,119 @@
+/* ===== Enhancements v1 (design + motion layer) =====
+   Loaded last. Additive only: remove this file and enhance.js to revert.
+   Motion = transform/opacity (plus one blur on the greeting), and every
+   animation is gated behind prefers-reduced-motion: no-preference. */
+
+/* ---- Always-on polish (no motion) ---- */
+html { -webkit-tap-highlight-color: transparent; }
+::selection { background: var(--primary); color: #fff; }
+
+/* One consistent, visible keyboard focus ring on every theme */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-md, 12px);
+}
+
+/* Primary button: clipped surface so the shine stays inside the pill */
+.btn-primary { position: relative; overflow: hidden; isolation: isolate; }
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.38) 50%, transparent 65%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+/* Reading-progress bar on the gift page */
+.gift-progress {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  height: 3px;
+  z-index: 60;
+  background: var(--gradient);
+  transform: scaleX(0);
+  transform-origin: left center;
+  pointer-events: none;
+}
+html[dir="rtl"] .gift-progress,
+html[lang="ar"] .gift-progress { transform-origin: right center; }
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* ---- Step changes in the creator flow (answers the user's tap) ---- */
+  .section.active .section-inner {
+    animation: elStepIn .5s cubic-bezier(.22, 1, .36, 1) both;
+  }
+  @keyframes elStepIn {
+    from { opacity: 0; transform: translateY(18px) scale(.985); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ---- The one orchestrated moment: hero entrance ----
+     Each word of the title rises in turn, the ampersand pops,
+     then the subtitle and button settle in. */
+  #section-hero.active .hero-title .script-text,
+  #section-hero.active .hero-title .ampersand {
+    animation: elWordRise .9s cubic-bezier(.22, 1, .36, 1) both;
+  }
+  #section-hero.active .hero-title .script-text:nth-of-type(1) { animation-delay: .10s; }
+  #section-hero.active .hero-title .script-text:nth-of-type(2) { animation-delay: .28s; }
+  #section-hero.active .hero-title .ampersand {
+    display: inline-block;
+    animation-name: elPop;
+    animation-duration: .8s;
+    animation-delay: .46s;
+  }
+  #section-hero.active .hero-title .script-text:nth-of-type(4) { animation-delay: .62s; }
+  #section-hero.active .hero-subtitle { animation: elFadeUp .8s ease .95s both; }
+  #section-hero.active #btn-start    { animation: elFadeUp .8s ease 1.15s both; }
+
+  @keyframes elWordRise {
+    from { opacity: 0; transform: translateY(.6em); filter: blur(6px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+  @keyframes elPop {
+    0%   { opacity: 0; transform: scale(.4) rotate(-12deg); }
+    70%  { opacity: 1; transform: scale(1.18) rotate(4deg); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes elFadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* After the entrance, the headline gradient drifts slowly (ambient, one place only) */
+  #section-hero.active .hero-title .script-text {
+    background-size: 220% 100%;
+    animation:
+      elWordRise .9s cubic-bezier(.22, 1, .36, 1) both,
+      elDrift 9s ease-in-out 1.8s infinite alternate;
+  }
+  @keyframes elDrift {
+    from { background-position: 0% 50%; }
+    to   { background-position: 100% 50%; }
+  }
+
+  /* ---- Gift page: the greeting settles into focus ---- */
+  .recipient-greeting {
+    animation: elGreeting 1.3s cubic-bezier(.22, 1, .36, 1) .2s both;
+  }
+  @keyframes elGreeting {
+    from { opacity: 0; transform: translateY(14px) scale(.96); filter: blur(10px); }
+    to   { opacity: 1; transform: none; filter: blur(0); }
+  }
+
+  /* ---- Button shine: hover devices only ---- */
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover::after { animation: elShine .9s ease; }
+    .card { transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .25s ease; }
+    .card:hover { transform: translateY(-4px); }
+  }
+  @keyframes elShine { to { transform: translateX(120%); } }
+
+  /* Touch feedback: quick, springy press */
+  .card:active, .theme-swatch:active { transform: scale(.96); transition-duration: .1s; }
+}
