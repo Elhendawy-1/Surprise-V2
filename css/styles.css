@@ -8,6 +8,8 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* ===== Design Tokens =====
@@ -43,6 +45,15 @@ html {
      against the deep/dark themes' near-black backgrounds. */
   --status-success: #22a55e;
   --status-error: #ef4444;
+
+  /* Fluid scale (v36): sizes glide between phone and desktop with clamp()
+     instead of jumping at a few breakpoints. Breakpoints below only change
+     structure (columns, stacking), not sizes. */
+  --gutter: clamp(1rem, 0.4rem + 3vw, 2rem);
+  --sec-y: clamp(2.5rem, 7vw, 4rem);
+  --fs-hero: clamp(2.25rem, 1.2rem + 5.2vw, 5rem);
+  --fs-title: clamp(2rem, 1.2rem + 2vw, 2.75rem);
+  --fs-script: clamp(2rem, 1.3rem + 2.2vw, 3rem);
 }
 
 /* Single consistent keyboard-focus ring for every interactive element.
@@ -70,7 +81,10 @@ body {
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: max(var(--gutter), env(safe-area-inset-top, 0px))
+           max(var(--gutter), env(safe-area-inset-right, 0px))
+           max(var(--gutter), env(safe-area-inset-bottom, 0px))
+           max(var(--gutter), env(safe-area-inset-left, 0px));
   background: var(--gradient-bg);
 }
 
@@ -79,22 +93,25 @@ body {
 }
 
 .section-inner {
-  max-width: 800px;
+  max-width: 50rem;
   width: 100%;
   text-align: center;
 }
 
 .section-title {
   font-family: var(--font-heading);
-  font-size: 2.5rem;
+  font-size: var(--fs-title);
   color: var(--text);
   margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .section-subtitle {
-  font-size: 1.1rem;
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.25rem);
   color: var(--text-light);
-  margin-bottom: 2rem;
+  margin-bottom: clamp(1.25rem, 4vw, 2rem);
+  text-wrap: balance;
 }
 
 /* ===== Hero Section ===== */
@@ -112,7 +129,7 @@ body {
 
 .hero-title {
   font-family: var(--font-script);
-  font-size: 4.5rem;
+  font-size: var(--fs-hero);
   line-height: 1.2;
   margin-bottom: 1.5rem;
   color: var(--text);
@@ -128,16 +145,16 @@ body {
 
 .hero-title .ampersand {
   font-family: var(--font-heading);
-  font-size: 3rem;
+  font-size: calc(var(--fs-hero) * 0.66);
   color: var(--accent);
   -webkit-text-fill-color: var(--accent);
 }
 
 .hero-subtitle {
-  font-size: 1.3rem;
+  font-size: clamp(1.05rem, 0.9rem + 0.8vw, 1.5rem);
   color: var(--text-light);
-  margin-bottom: 2.5rem;
-  max-width: 500px;
+  margin-bottom: clamp(1.75rem, 5vw, 2.5rem);
+  max-width: 31.25rem;
   margin-left: auto;
   margin-right: auto;
 }
@@ -229,11 +246,19 @@ body {
 
 /* ===== Card Grid ===== */
 .card-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.2rem;
-  max-width: 600px;
+  --cols: 2;
+  --gap: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--gap);
+  max-width: 37.5rem;
   margin: 0 auto;
+}
+
+.card-grid > .card {
+  flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  min-width: 0;
 }
 
 .card {
@@ -267,19 +292,20 @@ body {
 }
 
 .card-icon {
-  font-size: 2.5rem;
+  font-size: clamp(2rem, 1.5rem + 1.5vw, 2.75rem);
 }
 
 .card-label {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 /* ===== Customize Form ===== */
 .customize-form {
   text-align: left;
-  max-width: 600px;
+  max-width: 37.5rem;
   margin: 0 auto;
 }
 
@@ -665,7 +691,7 @@ html[dir="rtl"] .slider::before {
 
 /* ===== Preview Frame ===== */
 .preview-frame {
-  max-width: 500px;
+  max-width: 31.25rem;
   margin: 0 auto 2rem;
   border: 2px solid var(--card-border);
   border-radius: var(--radius-xl);
@@ -682,7 +708,7 @@ html[dir="rtl"] .slider::before {
 
 /* ===== Share Box ===== */
 .share-box {
-  max-width: 500px;
+  max-width: 31.25rem;
   margin: 0 auto;
   text-align: center;
 }
@@ -895,6 +921,8 @@ html[dir="rtl"] .share-link {
   z-index: 1000;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   scroll-behavior: smooth;
   scroll-padding-bottom: 7rem;
 }
@@ -918,7 +946,7 @@ html[dir="rtl"] .share-link {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 2rem;
+  padding: var(--sec-y) var(--gutter);
   box-sizing: border-box;
   text-align: center;
 }
@@ -931,7 +959,7 @@ html[dir="rtl"] .share-link {
 
 .recipient-hero-content {
   text-align: center;
-  max-width: 600px;
+  max-width: 37.5rem;
   width: 100%;
   margin: 0 auto;
 }
@@ -954,8 +982,9 @@ html[dir="rtl"] .share-link {
 .recipient-main-photo img {
   position: relative;
   z-index: 1;
-  width: 180px;
-  height: 180px;
+  width: clamp(9.5rem, 22vw + 3.5rem, 15rem);
+  height: auto;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   object-fit: cover;
   border: 5px solid var(--accent);
@@ -987,7 +1016,9 @@ html[dir="rtl"] .share-link {
 
 .recipient-greeting {
   font-family: var(--font-script);
-  font-size: 3.5rem;
+  font-size: clamp(2.2rem, 1.4rem + 3.4vw, 3.75rem);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
   margin-bottom: 2rem;
   background: var(--gradient);
   -webkit-background-clip: text;
@@ -1016,14 +1047,14 @@ html[dir="rtl"] .share-link {
 
 .cake-wrap {
   text-align: center;
-  max-width: 560px;
+  max-width: 35rem;
   width: 100%;
   margin: 0 auto;
 }
 
 .cake-heading {
   font-family: var(--font-script);
-  font-size: 2.5rem;
+  font-size: var(--fs-script);
   margin-bottom: 0.25rem;
   background: var(--gradient);
   -webkit-background-clip: text;
@@ -1044,6 +1075,8 @@ html[dir="rtl"] .share-link {
   align-items: center;
   margin: 0 auto;
   position: relative;
+  /* One variable scales the whole cake: 200px on a 320px phone up to 250px+. */
+  --cake-w: clamp(12.5rem, 60vw, 15.625rem);
   padding: 1.5rem 1rem 1rem;
 }
 
@@ -1055,8 +1088,8 @@ html[dir="rtl"] .share-link {
   top: 46%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(380px, 94vw);
-  height: 380px;
+  width: min(calc(var(--cake-w) * 1.52), 94vw);
+  height: calc(var(--cake-w) * 1.52);
   background: radial-gradient(closest-side, rgba(255, 255, 255, 0.8), rgba(255, 232, 240, 0.38) 58%, transparent 76%);
   pointer-events: none;
   z-index: 0;
@@ -1069,8 +1102,8 @@ html[dir="rtl"] .share-link {
   left: 50%;
   bottom: 2px;
   transform: translateX(-50%);
-  width: 250px;
-  height: 26px;
+  width: var(--cake-w);
+  height: calc(var(--cake-w) * 0.104);
   background: radial-gradient(ellipse at center, rgba(60, 20, 35, 0.22), transparent 70%);
   pointer-events: none;
   z-index: 0;
@@ -1078,7 +1111,7 @@ html[dir="rtl"] .share-link {
 
 .candles-row {
   display: flex;
-  gap: 1.1rem;
+  gap: clamp(0.15rem, 2.4vw, 1.1rem);
   align-items: flex-end;
   margin-bottom: -5px;
   z-index: 2;
@@ -1169,8 +1202,8 @@ html[dir="rtl"] .share-link {
 }
 
 .cake-top {
-  width: 250px;
-  height: 30px;
+  width: var(--cake-w);
+  height: calc(var(--cake-w) * 0.12);
   position: relative;
   background:
     radial-gradient(ellipse 60% 90% at 50% 0%, rgba(255, 190, 90, 0.28), transparent 70%),
@@ -1195,8 +1228,8 @@ html[dir="rtl"] .share-link {
 }
 
 .cake-body {
-  width: 250px;
-  height: 118px;
+  width: var(--cake-w);
+  height: calc(var(--cake-w) * 0.472);
   border-radius: 0 0 18px 18px;
   background:
     linear-gradient(180deg, transparent 24px, rgba(212, 175, 55, 0.92) 24px, rgba(212, 175, 55, 0.92) 32px, rgba(243, 226, 162, 0.95) 32px, rgba(243, 226, 162, 0.95) 34px, transparent 34px),
@@ -1216,8 +1249,8 @@ html[dir="rtl"] .share-link {
 }
 
 .cake-plate {
-  width: 312px;
-  height: 22px;
+  width: calc(var(--cake-w) * 1.248);
+  height: calc(var(--cake-w) * 0.088);
   border-radius: 50%;
   background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f2ece0 62%, #ddd2bf 100%);
   margin-top: -3px;
@@ -1228,7 +1261,7 @@ html[dir="rtl"] .share-link {
 
 .wish-text {
   font-family: var(--font-script);
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 1.2rem + 1.5vw, 2.25rem);
   margin-top: 1.5rem;
   background: var(--gradient);
   -webkit-background-clip: text;
@@ -1248,12 +1281,12 @@ html[dir="rtl"] .share-link {
 /* Topic Centerpiece Section (valentine heart / thanks bouquet / surprise gift) */
 .recipient-centerpiece-section {
   min-height: auto;
-  padding: 4rem 2rem;
+  padding: var(--sec-y) var(--gutter);
   background: rgba(0, 0, 0, 0.01);
 }
 
 .centerpiece-wrap {
-  max-width: 580px;
+  max-width: 36.25rem;
   width: 100%;
   margin: 0 auto;
   text-align: center;
@@ -1261,7 +1294,7 @@ html[dir="rtl"] .share-link {
 }
 
 .centerpiece-visual {
-  font-size: 5rem;
+  font-size: clamp(3.5rem, 2.5rem + 4vw, 6rem);
   line-height: 1.2;
   margin-bottom: 1rem;
   filter: drop-shadow(0 6px 14px var(--shadow-lg));
@@ -1281,7 +1314,7 @@ html[dir="rtl"] .share-link {
 
 .centerpiece-heading {
   font-family: var(--font-script);
-  font-size: 2.5rem;
+  font-size: var(--fs-script);
   margin-bottom: 0.25rem;
   background: var(--gradient);
   -webkit-background-clip: text;
@@ -1322,7 +1355,7 @@ html[dir="rtl"] .share-link {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  max-width: 420px;
+  max-width: 26.25rem;
   margin: 0 auto 1.5rem;
   padding: 0.7rem 1.2rem;
   border: 2px solid var(--primary);
@@ -1340,12 +1373,12 @@ html[dir="rtl"] .share-link {
 /* Gallery Section */
 .recipient-gallery-section {
   min-height: auto;
-  padding: 4rem 2rem;
+  padding: var(--sec-y) var(--gutter);
   background: rgba(0, 0, 0, 0.01);
 }
 
 .recipient-gallery-wrap {
-  max-width: 560px;
+  max-width: 35rem;
   width: 100%;
   margin: 0 auto;
   text-align: center;
@@ -1353,7 +1386,7 @@ html[dir="rtl"] .share-link {
 
 .recipient-gallery-heading {
   font-family: var(--font-script);
-  font-size: 2.5rem;
+  font-size: var(--fs-script);
   margin-bottom: 0.25rem;
   background: var(--gradient);
   -webkit-background-clip: text;
@@ -1372,7 +1405,7 @@ html[dir="rtl"] .share-link {
   display: grid;
   grid-template-columns: 1fr;
   gap: 2.5rem;
-  max-width: 560px;
+  max-width: 35rem;
   width: 100%;
 }
 
@@ -1495,14 +1528,14 @@ html[dir="rtl"] .recipient-gallery-item.visible:hover::after {
 }
 
 .recipient-message-card {
-  max-width: 600px;
+  max-width: 37.5rem;
   width: 100%;
   margin: 0 auto;
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-2xl);
-  padding: 3rem;
+  padding: clamp(2rem, 6vw, 3rem) clamp(1.25rem, 5vw, 3rem);
   box-shadow: 0 10px 40px var(--shadow);
   box-sizing: border-box;
   position: relative;
@@ -1530,7 +1563,7 @@ html[dir="rtl"] .recipient-gallery-item.visible:hover::after {
 
 .recipient-message {
   font-family: var(--font-body);
-  font-size: 1.2rem;
+  font-size: clamp(1.1rem, 1rem + 0.4vw, 1.4rem);
   line-height: 2;
   color: var(--text);
   white-space: pre-wrap;
@@ -1550,11 +1583,11 @@ html[dir="rtl"] .recipient-gallery-item.visible:hover::after {
 /* Details Section */
 .recipient-details-section {
   min-height: auto;
-  padding: 4rem 2rem;
+  padding: var(--sec-y) var(--gutter);
 }
 
 .recipient-details-card {
-  max-width: 500px;
+  max-width: 31.25rem;
   width: 100%;
   margin: 0 auto;
   background: var(--glass-bg);
@@ -1650,13 +1683,16 @@ html[dir="rtl"] .countdown-label {
 
 .recipient-closing {
   text-align: center;
-  max-width: 600px;
+  max-width: 37.5rem;
   width: 100%;
   margin: 0 auto;
 }
 
 .recipient-closing-hearts {
   font-size: 2rem;
+  /* shrink-wrap so the heartbeat scale can never push past the screen edge */
+  width: fit-content;
+  margin-inline: auto;
   margin-bottom: 1rem;
   animation: heartbeat 1.5s ease infinite;
 }
@@ -1802,7 +1838,7 @@ html[dir="rtl"] .photo-slot .btn-remove {
 
 /* Custom relationship input */
 .custom-relationship-wrap {
-  max-width: 500px;
+  max-width: 31.25rem;
   margin: 1.5rem auto 0;
   text-align: left;
 }
@@ -1882,71 +1918,47 @@ html[dir="rtl"] .photo-slot .btn-remove {
   text-align: center;
 }
 
-/* ===== Responsive ===== */
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 3rem;
-  }
+/* ===== Responsive (v36) =====
+   Sizes are fluid (clamp tokens in :root); the breakpoints below only change
+   structure. Verified at 320 / 360 / 390 / 430 / 667 (landscape) / 768 /
+   1024 / 1366 / 1920 / 2560 px wide, LTR and RTL. */
 
-  .section-title {
-    font-size: 2rem;
-  }
-
+/* Cards: centered rows (a short last row stays centered, not left-stuck). */
+@media (min-width: 560px) {
   .card-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .theme-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .photos-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .share-link-container {
-    flex-direction: column;
-  }
-
-  .share-actions {
-    flex-direction: column;
-  }
-
-  .form-actions {
-    flex-direction: column;
-  }
-
-  .recipient-greeting {
-    font-size: 2rem;
+    --cols: 3;
+    --gap: 1.2rem;
   }
 }
 
-@media (max-width: 480px) {
-  .hero-title {
-    font-size: 2.5rem;
+@media (min-width: 1024px) {
+  #relationship-grid {
+    --cols: 4;
+    max-width: 860px;
   }
+}
 
-  .hero-title .ampersand {
-    font-size: 2rem;
-  }
-
-  .section {
-    padding: 1rem;
-  }
-
-  .card-grid {
+/* Theme + photo grids step down with the width they actually have. */
+@media (max-width: 699px) {
+  .photos-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.8rem;
   }
+}
 
-  .card {
-    padding: 1rem 0.75rem;
+@media (max-width: 599px) {
+  .form-actions,
+  .share-actions {
+    flex-direction: column;
   }
+}
 
-  .card-icon {
-    font-size: 2rem;
+@media (max-width: 559px) {
+  .share-link-container {
+    flex-direction: column;
   }
+}
 
+@media (max-width: 479px) {
   .photos-grid {
     grid-template-columns: 1fr;
   }
@@ -1955,8 +1967,11 @@ html[dir="rtl"] .photo-slot .btn-remove {
     flex-direction: column;
   }
 
+  .card {
+    padding: 1rem 0.75rem;
+  }
+
   .music-prompt {
-    bottom: 1rem;
     padding: 0.75rem 1.4rem;
     font-size: 0.9rem;
   }
@@ -1968,41 +1983,8 @@ html[dir="rtl"] .photo-slot .btn-remove {
     max-height: 60dvh;
   }
 
-  .recipient-gallery-heading {
-    font-size: 2rem;
-  }
-
-  .cake-heading {
-    font-size: 2rem;
-  }
-
-  .cake-top,
-  .cake-body {
-    width: 200px;
-  }
-
-  .cake-body {
-    height: 92px;
-  }
-
-  .cake-plate {
-    width: 250px;
-  }
-
-  .cake-scene::after {
-    width: 200px;
-  }
-
-  .candles-row {
-    gap: 0.8rem;
-  }
-
-  .wish-text {
-    font-size: 1.6rem;
-  }
-
-  .recipient-message-card {
-    padding: 2rem 1.25rem;
+  .recipient-details-card {
+    padding: 1.5rem 1rem;
   }
 
   .countdown-grid {
@@ -2019,35 +2001,15 @@ html[dir="rtl"] .photo-slot .btn-remove {
   .countdown-num {
     font-size: 1.3rem;
   }
+}
 
-  .recipient-greeting {
-    font-size: 2.2rem;
-  }
-
-  .recipient-section {
-    padding: 3rem 1rem;
+@media (max-width: 440px) {
+  .theme-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* ===== Small-phone safety net (very narrow / short screens) ===== */
 @media (max-width: 360px) {
-  .hero-title {
-    font-size: 2.1rem;
-  }
-
-  .cake-top,
-  .cake-body {
-    width: 168px;
-  }
-
-  .cake-plate {
-    width: 210px;
-  }
-
-  .cake-scene::after {
-    width: 168px;
-  }
-
   .countdown-box {
     width: 58px;
     height: 58px;
@@ -2057,6 +2019,86 @@ html[dir="rtl"] .photo-slot .btn-remove {
 
   .countdown-num {
     font-size: 1.1rem;
+  }
+}
+
+/* The fixed language pill (bottom-left) must never sit on top of the last
+   buttons of a screen, on tablets and small laptops as well as phones. */
+@media (max-width: 1279px) {
+  .section-inner {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Tablet portrait and up: the photo memory lane uses two columns. */
+@media (min-width: 720px) {
+  .recipient-gallery-wrap {
+    max-width: min(100%, 62rem);
+  }
+
+  .recipient-gallery {
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    column-gap: 2rem;
+    row-gap: 2.5rem;
+  }
+
+  /* An odd last photo (or a single one) is centered instead of stuck left. */
+  .recipient-gallery-item:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(100%, 35rem);
+  }
+}
+
+/* Laptop and up: the creator form uses two columns instead of a thin strip. */
+@media (min-width: 900px) {
+  #section-customize .section-inner {
+    max-width: 56rem;
+  }
+
+  .customize-form {
+    max-width: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2rem;
+  }
+
+  .customize-form > .form-group,
+  .customize-form > .form-actions {
+    grid-column: 1 / -1;
+  }
+
+  /* Name + the topic-specific field share a row; with no extra field the
+     name stays full width. */
+  .customize-form:has(> .occasion-field:not([style*="display:none"]):not([style*="display: none"])) > .form-group:first-child,
+  .customize-form > .form-group.occasion-field {
+    grid-column: auto;
+  }
+
+  .theme-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Big monitors: everything sized in rem (containers, cake, text) scales up
+   instead of floating as a small island in a huge screen. */
+@media (min-width: 1600px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 1920px) {
+  html {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 2400px) {
+  html {
+    font-size: 24px;
   }
 }
 
@@ -2083,11 +2125,18 @@ html[dir="rtl"] .photo-slot .btn-remove {
 /* Landscape phones / short screens: 100vh sections shouldn't force extra
    scrolling past content that already fits. */
 @media (max-height: 500px) and (orientation: landscape) {
-  .section,
   .recipient-section {
     min-height: auto;
     padding-top: 2rem;
     padding-bottom: 2rem;
+  }
+
+  /* Creator screens keep their full-height themed background (min-height
+     stays 100vh/100dvh and never forces extra scrolling - content taller
+     than the screen just grows); only the padding tightens. */
+  .section {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
   }
 }
 
@@ -2127,7 +2176,7 @@ html[dir="rtl"] .photo-slot .btn-remove {
 }
 
 .noscript-note {
-  max-width: 560px;
+  max-width: 35rem;
   margin: 1rem auto;
   padding: 0.85rem 1rem;
   text-align: center;
@@ -2191,24 +2240,24 @@ canvas {
    for older engines without logical properties. */
 .music-controls {
   bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
-  right: 2rem;
-  inset-inline-end: 2rem;
+  right: max(2rem, env(safe-area-inset-right, 0px));
+  inset-inline-end: max(2rem, env(safe-area-inset-right, 0px));
 }
 
 html[dir="rtl"] .music-controls {
   right: auto;
-  left: 2rem;
+  left: max(2rem, env(safe-area-inset-left, 0px));
 }
 
 .lang-toggle {
   bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
-  left: 2rem;
-  inset-inline-start: 2rem;
+  left: max(2rem, env(safe-area-inset-left, 0px));
+  inset-inline-start: max(2rem, env(safe-area-inset-left, 0px));
 }
 
 html[dir="rtl"] .lang-toggle {
   left: auto;
-  right: 2rem;
+  right: max(2rem, env(safe-area-inset-right, 0px));
 }
 
 .btn-music {
@@ -2263,14 +2312,24 @@ html[dir="rtl"] .lang-toggle {
 @media (max-width: 480px) {
   .music-controls {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    right: 1rem;
-    inset-inline-end: 1rem;
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    inset-inline-end: max(1rem, env(safe-area-inset-right, 0px));
   }
 
   .lang-toggle {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    left: 1rem;
-    inset-inline-start: 1rem;
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    inset-inline-start: max(1rem, env(safe-area-inset-left, 0px));
+  }
+
+  /* RTL: the physical left/right rules above out-rank the logical ones, so
+     the 1rem phone spacing has to be restated for Arabic. */
+  html[dir="rtl"] .music-controls {
+    left: max(1rem, env(safe-area-inset-left, 0px));
+  }
+
+  html[dir="rtl"] .lang-toggle {
+    right: max(1rem, env(safe-area-inset-right, 0px));
   }
 
   /* Creator flow needs clearance above the fixed language pill so the
@@ -2289,5 +2348,113 @@ html[dir="rtl"] .lang-toggle {
      elements (lang pill + music button + prompt) never stack on 320px. */
   .music-prompt {
     bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ===== Touch, input and short-screen polish (v36) ===== */
+
+/* iOS Safari zooms the whole page when a field under 16px gets focus. */
+@media (pointer: coarse), (max-width: 768px) {
+  .photo-text-input,
+  .photo-url-input,
+  .share-link,
+  .custom-relationship-row input {
+    font-size: 1rem;
+  }
+}
+
+/* iOS renders date inputs wider/shorter than text inputs; normalise them. */
+.form-group input[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--control-height);
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: start;
+}
+
+/* 44px touch targets without changing the drawn size of small controls. */
+.switch::after,
+.btn-remove::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+@media (pointer: coarse) {
+  .photo-slot .btn-remove {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .toggle-btn,
+  .song-choice-item {
+    min-height: 44px;
+  }
+}
+
+/* Touch screens have no real hover: don't leave a tapped control stuck in
+   its hover look until the next tap elsewhere. */
+@media (hover: none) {
+  .card:hover:not(.selected) {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--card-border);
+  }
+
+  .btn-primary:hover {
+    transform: none;
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+
+  .btn-secondary:hover {
+    background: transparent;
+    color: var(--primary);
+  }
+
+  .theme-swatch:hover:not(.active),
+  .toggle-btn:hover:not(.active),
+  .song-choice-item:hover:not(.selected),
+  .lang-toggle:hover {
+    border-color: var(--card-border);
+    transform: none;
+  }
+
+  .song-preview-btn:hover {
+    background: transparent;
+    color: var(--primary);
+  }
+
+  .btn-music:hover {
+    transform: none;
+  }
+}
+
+/* Landscape phones: the stacked 4-line hero title would be taller than the
+   screen, so lay it out on one line. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero-title {
+    font-size: min(var(--fs-hero), 13vh);
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-title .script-text {
+    display: inline-block;
+    margin-inline: 0.12em;
+  }
+
+  .hero-subtitle {
+    margin-bottom: 1.25rem;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+  }
+
+  .section-subtitle {
+    margin-bottom: 1rem;
   }
 }

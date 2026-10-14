@@ -1707,8 +1707,8 @@ const App = {
     // hearts + petals whenever the gift tab becomes visible again.
     // Registered once: showRecipientView can run again (language
     // switch re-renders), and the listener must not pile up.
-    if (!document.dataset.ambientWatch) {
-      document.dataset.ambientWatch = '1';
+    if (!document.documentElement.dataset.ambientWatch) {
+      document.documentElement.dataset.ambientWatch = '1';
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.getElementById('recipient-view').style.display === 'block') {
           if (Animations.calmMode && Animations.calmMode()) return;
