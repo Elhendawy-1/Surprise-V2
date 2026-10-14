@@ -14,5 +14,9 @@ desktop.ini
 *.log
 *.tmp
 
+# Local dumps / patches (never commit)
+project-source.txt
+responsive-changes.diff
+
 # Dependencies (none required, static site)
 node_modules/
