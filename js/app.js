@@ -73,23 +73,29 @@ const App = {
     const slot = this.state.photoSlotSeq++;
     const grid = document.getElementById('photos-grid');
     const lang = this.state.lang || 'en';
+    const addLabel = this.escapeHtml(t('addPhotoBtn', lang));
+    const uploadAria = this.escapeHtml(t('photoUploadAria', lang));
+    const linkAria = this.escapeHtml(t('photoLinkAria', lang));
+    const captionAria = this.escapeHtml(t('photoCaptionAria', lang));
+    const removeAria = this.escapeHtml(t('photoRemoveAria', lang));
+    const previewAlt = this.escapeHtml(t('photoPreviewAlt', lang));
     const div = document.createElement('div');
     div.className = 'photo-slot';
     div.dataset.slot = slot;
     div.innerHTML =
       '<div class="photo-upload-area" id="photo-upload-area-' + slot + '">' +
-        '<input type="file" accept="image/*" class="file-input photo-file-input" data-slot="' + slot + '" aria-label="Upload photo">' +
+        '<input type="file" accept="image/*" class="file-input photo-file-input" data-slot="' + slot + '" aria-label="' + uploadAria + '">' +
         '<div class="photo-preview" id="photo-preview-' + slot + '" style="display:none;">' +
-          '<img id="photo-preview-img-' + slot + '" alt="Photo preview">' +
-          '<button type="button" class="btn-remove photo-remove-btn" data-slot="' + slot + '" aria-label="Remove photo">&times;</button>' +
+          '<img id="photo-preview-img-' + slot + '" alt="' + previewAlt + '" data-i18n-managed="1">' +
+          '<button type="button" class="btn-remove photo-remove-btn" data-slot="' + slot + '" aria-label="' + removeAria + '">&times;</button>' +
         '</div>' +
         '<div class="photo-placeholder" id="photo-placeholder-' + slot + '">' +
           '<span class="upload-icon">&#128247;</span>' +
-          '<span>+ Add Photo</span>' +
+          '<span class="photo-add-label">+ ' + addLabel + '</span>' +
         '</div>' +
       '</div>' +
-      '<input type="text" class="photo-url-input" data-slot="' + slot + '" data-i18n-ph="urlPh" aria-label="Photo link" placeholder="' + this.escapeHtml(t('urlPh', lang)) + '">' +
-      '<input type="text" class="photo-text-input" data-slot="' + slot + '" data-i18n-ph="captionPh" aria-label="Photo caption" placeholder="' + this.escapeHtml(t('captionPh', lang)) + '">';
+      '<input type="text" class="photo-url-input" data-slot="' + slot + '" data-i18n-ph="urlPh" aria-label="' + linkAria + '" placeholder="' + this.escapeHtml(t('urlPh', lang)) + '">' +
+      '<input type="text" class="photo-text-input" data-slot="' + slot + '" data-i18n-ph="captionPh" aria-label="' + captionAria + '" placeholder="' + this.escapeHtml(t('captionPh', lang)) + '">';
     grid.appendChild(div);
     return slot;
   },
@@ -237,7 +243,7 @@ const App = {
       Share.copyToClipboard(linkInput.value).then(success => {
         const btn = document.getElementById('btn-copy');
         const lang = this.state.lang || 'en';
-        btn.textContent = success ? t('copiedBtn', lang) : 'Failed';
+        btn.textContent = success ? t('copiedBtn', lang) : t('copyFailed', lang);
         btn.classList.toggle('copy-success', !!success);
         setTimeout(() => {
           btn.textContent = t('copyBtn', this.state.lang);
@@ -295,7 +301,10 @@ const App = {
     const lang = this.state.lang || 'en';
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    try { document.title = t('pageTitle', lang) || document.title; } catch (e) { /* ignore */ }
     document.querySelectorAll('[data-i18n]').forEach(el => {
+      // Song default name is dynamic once a song is picked — keep filename.
+      if (el.id === 'song-choice-name' && this.state.songChoiceName && this.state.songChoice) return;
       el.textContent = t(el.dataset.i18n, lang);
     });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => {
@@ -305,26 +314,92 @@ const App = {
       const key = el.dataset.i18nHtml;
       el.innerHTML = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || '';
     });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      el.setAttribute('aria-label', t(el.dataset.i18nAria, lang));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      el.setAttribute('title', t(el.dataset.i18nTitle, lang));
+    });
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+      el.setAttribute('alt', t(el.dataset.i18nAlt, lang));
+    });
     const toggle = document.getElementById('lang-toggle');
     if (toggle) {
       toggle.textContent = lang === 'ar' ? 'EN' : 'عربي';
       toggle.setAttribute('aria-label', t('langSwitch', lang));
     }
-    // Keep dynamic slot labels translated as well.
+    // Native date inputs render in the browser/device locale, but setting
+    // lang on the element is a hint Chromium uses for field order/names.
+    ['birthday-date', 'anniversary-date'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { try { el.lang = lang; } catch (e) { /* ignore */ } }
+    });
+    // Keep dynamic slot labels translated as well (table-driven so
+    // translators only edit I18N, and new slots inherit on creation).
     document.querySelectorAll('.photo-file-input').forEach(el => {
-      el.setAttribute('aria-label', lang === 'ar' ? 'ارفع صورة' : 'Upload photo');
+      el.setAttribute('aria-label', t('photoUploadAria', lang));
+    });
+    const previewImgAlt = t('photoPreviewAlt', lang);
+    document.querySelectorAll('[id^="photo-preview-img-"]').forEach(el => {
+      if (!el.getAttribute('alt') || el.getAttribute('data-i18n-managed') === '1') {
+        el.setAttribute('alt', previewImgAlt);
+        el.setAttribute('data-i18n-managed', '1');
+      }
+    });
+    document.querySelectorAll('.photo-add-label').forEach(el => {
+      el.textContent = '+ ' + t('addPhotoBtn', lang);
     });
     document.querySelectorAll('.photo-url-input').forEach(el => {
-      el.setAttribute('aria-label', lang === 'ar' ? 'رابط الصورة' : 'Photo link');
+      el.setAttribute('aria-label', t('photoLinkAria', lang));
     });
     document.querySelectorAll('.photo-text-input').forEach(el => {
-      el.setAttribute('aria-label', lang === 'ar' ? 'تعليق الصورة' : 'Photo caption');
+      el.setAttribute('aria-label', t('photoCaptionAria', lang));
     });
     document.querySelectorAll('.photo-remove-btn').forEach(el => {
-      el.setAttribute('aria-label', lang === 'ar' ? 'إزالة الصورة' : 'Remove photo');
+      el.setAttribute('aria-label', t('photoRemoveAria', lang));
+    });
+    // Candle buttons exist statically; keep their labels translated.
+    this.translateCandles(lang);
+    // Photo URL status lines were rendered in the old language — re-derive
+    // them from stored keys so toggling never leaves mixed-language hints.
+    document.querySelectorAll('.photo-url-status').forEach(el => {
+      const key = el.dataset.i18nKey;
+      if (key) {
+        el.textContent = t(key, lang);
+        el.style.display = el.textContent ? 'block' : 'none';
+      }
     });
     this.updateThemePreview();
+    this.updateFormFields();
     this.updateAutoMessage();
+    // Song default label (when no custom song picked yet).
+    if (!this.state.songChoice) {
+      const songName = document.getElementById('song-choice-name');
+      if (songName) songName.textContent = t('songDefaultName', lang);
+    }
+    // Preview page is a rendered snapshot — re-render it in the new
+    // language so preview matches what the gift will show.
+    if (this.state.currentSection === 'preview' && this.lastPreviewData) {
+      try {
+        const data = Object.assign({}, this.lastPreviewData, { lang: lang });
+        this.renderRecipientView('preview-content', data);
+      } catch (e) { /* ignore */ }
+    }
+    // The share note is dynamic (embed/QR status), not a static string:
+    // restore it after the data-i18n sweep so a language toggle keeps it.
+    if (this.state.currentSection === 'share' && this.lastShareNote) {
+      const subtitle = document.querySelector('#section-share .section-subtitle');
+      if (subtitle) subtitle.textContent = this.lastShareNote;
+    }
+  },
+
+  // Translate static candle buttons (also called from setupCake).
+  translateCandles(lang) {
+    const l = lang || this.state.lang || 'en';
+    document.querySelectorAll('.candle').forEach(c => {
+      const n = c.dataset.candleN || c.getAttribute('aria-label').replace(/\D+/g, '') || '';
+      c.setAttribute('aria-label', t('candleLabel', l, { n: n }));
+    });
   },
 
   // Show a section
@@ -349,9 +424,9 @@ const App = {
     }
   },
 
-  // Who each topic is for. Birthdays fit everyone; romantic topics
-  // (Valentine, Anniversary) skip Mom, Dad and Aunt; gratitude and
-  // spontaneous gifts fit everyone.
+  // Who each topic is for. Birthdays, gratitude and spontaneous gifts
+  // fit everyone; romantic topics (Valentine, Anniversary) focus on
+  // partners + Other.
   topicPeople: {
     birthday: ['mom', 'dad', 'sister', 'brother', 'aunt', 'friend', 'husband', 'wife', 'boyfriend', 'girlfriend', 'other'],
     valentine: ['boyfriend', 'girlfriend', 'husband', 'wife', 'other'],
@@ -378,6 +453,9 @@ const App = {
       card.classList.remove('selected');
     });
     this.state.relationship = null;
+    this.state.customRelationship = '';
+    const customInput = document.getElementById('custom-relationship');
+    if (customInput) customInput.value = '';
     document.getElementById('custom-relationship-wrap').style.display = 'none';
 
     // Small delay for visual feedback
@@ -445,7 +523,7 @@ const App = {
   // Handle photo upload for specific slot
   handlePhotoFile(file, slot) {
     const lang = this.state.lang || 'en';
-    if (!file.type.startsWith('image/')) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
       alert(t('alertNotImage', lang));
       return;
     }
@@ -453,7 +531,7 @@ const App = {
       alert(t('alertTooBig', lang));
       return;
     }
-    if (/heic|heif/i.test(file.type) || /\.hei[c f]$/i.test(file.name || '')) {
+    if (/heic|heif/i.test(file.type) || /\.hei[cf]$/i.test(file.name || '')) {
       alert(t('alertHeic', lang));
     }
 
@@ -486,18 +564,28 @@ const App = {
     return el;
   },
 
-  setUrlStatus(slot, ok, text) {
+  setUrlStatus(slot, ok, text, key) {
     const el = this.urlStatusEl(slot);
     if (!el) return;
     el.textContent = text || '';
     el.style.display = text ? 'block' : 'none';
     el.classList.toggle('status-ok', !!ok);
     el.classList.toggle('status-bad', !ok);
+    // Remember the i18n key so applyLang can re-translate after a toggle.
+    if (key) el.dataset.i18nKey = key;
+    else if (!text) delete el.dataset.i18nKey;
   },
 
   // Handle pasted URL - show live preview + clear OK / error feedback
   handlePhotoUrlInput(rawVal, slot) {
     const lang = this.state.lang || 'en';
+    const img = document.getElementById(`photo-preview-img-${slot}`);
+    const preview = document.getElementById(`photo-preview-${slot}`);
+    const placeholder = document.getElementById(`photo-placeholder-${slot}`);
+    if (!img || !preview || !placeholder) return;
+    // If a file is selected, file preview wins - don't override it
+    // with URL status or error text.
+    if (this.state.photos[slot]) return;
     // Google Photos share pages are not embeddable images - explain the
     // Drive route instead of a confusing red error after a load failure.
     if (/photos\.app\.goo\.gl|photos\.google\.com\/share/i.test(rawVal || '')) {
@@ -507,43 +595,39 @@ const App = {
       if (img0) img0.removeAttribute('src');
       if (preview0) preview0.style.display = 'none';
       if (placeholder0) placeholder0.style.display = 'flex';
-      this.setUrlStatus(slot, false, t('statusGooglePhotos', lang));
+      this.setUrlStatus(slot, false, t('statusGooglePhotos', lang), 'statusGooglePhotos');
       return;
     }
-    const val = Share.normalizeImageUrl(rawVal);
-    const img = document.getElementById(`photo-preview-img-${slot}`);
-    const preview = document.getElementById(`photo-preview-${slot}`);
-    const placeholder = document.getElementById(`photo-placeholder-${slot}`);
-    if (!img || !preview || !placeholder) return;
-    // If a file is selected, file preview wins - don't override
-    if (this.state.photos[slot]) return;
+    const val = Share.normalizeImageUrl(rawVal || '');
     if (val && (val.startsWith('http://') || val.startsWith('https://'))) {
-      this.setUrlStatus(slot, true, t('statusChecking', lang));
+      this.setUrlStatus(slot, true, t('statusChecking', lang), 'statusChecking');
       img.onerror = () => {
         preview.style.display = 'none';
         placeholder.style.display = 'flex';
         // Drive links that fail almost always mean the file is not shared
         // as "Anyone with the link" - say so directly.
         const isDrive = /drive\.google\.com|drive\.usercontent\.google\.com/i.test(val);
-        this.setUrlStatus(slot, false, t(isDrive ? 'statusDrivePrivate' : 'statusBad', lang));
+        const key = isDrive ? 'statusDrivePrivate' : 'statusBad';
+        this.setUrlStatus(slot, false, t(key, lang), key);
       };
       img.onload = () => {
         preview.style.display = 'block';
         placeholder.style.display = 'none';
-        this.setUrlStatus(slot, true, t('statusOk', lang));
+        this.setUrlStatus(slot, true, t('statusOk', lang), 'statusOk');
       };
       img.src = val;
       // Trigger load check for cached images
       if (img.complete && img.naturalWidth > 0) {
         preview.style.display = 'block';
         placeholder.style.display = 'none';
-        this.setUrlStatus(slot, true, t('statusOk', lang));
+        this.setUrlStatus(slot, true, t('statusOk', lang), 'statusOk');
       }
     } else {
       preview.style.display = 'none';
       placeholder.style.display = 'flex';
       img.removeAttribute('src');
-      this.setUrlStatus(slot, false, rawVal && rawVal.trim() ? t('statusNotLink', lang) : '');
+      const hasVal = rawVal && rawVal.trim();
+      this.setUrlStatus(slot, false, hasVal ? t('statusNotLink', lang) : '', hasVal ? 'statusNotLink' : '');
     }
   },
 
@@ -557,8 +641,10 @@ const App = {
     if (input) input.value = '';
     const img = document.getElementById(`photo-preview-img-${slot}`);
     if (img) img.removeAttribute('src');
-    document.getElementById(`photo-preview-${slot}`).style.display = 'none';
-    document.getElementById(`photo-placeholder-${slot}`).style.display = 'flex';
+    const previewEl = document.getElementById(`photo-preview-${slot}`);
+    if (previewEl) previewEl.style.display = 'none';
+    const placeholderEl = document.getElementById(`photo-placeholder-${slot}`);
+    if (placeholderEl) placeholderEl.style.display = 'flex';
     // If a URL is still pasted, restore its preview (and status);
     // otherwise clear any stale status text.
     const urlInput = document.querySelector(`.photo-url-input[data-slot="${slot}"]`);
@@ -584,8 +670,9 @@ const App = {
   // Update auto-generated message preview
   updateAutoMessage() {
     if (this.state.messageMode !== 'auto') return;
-
-    const name = document.getElementById('recipient-name').value || 'their name';
+    const lang = this.state.lang || 'en';
+    const rawName = document.getElementById('recipient-name').value.trim();
+    const name = rawName || (lang === 'ar' ? 'صديقنا' : 'Friend');
 
     const data = {
       relationship: this.state.relationship,
@@ -839,10 +926,18 @@ const App = {
     sub.textContent = t(cfg.s, lang);
     const wrap = section.querySelector('.centerpiece-wrap');
     if (wrap) {
-      wrap.onclick = () => {
+      const burstFn = () => {
         if (cfg.burst === 'hearts') Animations.celebrationBurst(host, 24);
         else if (cfg.burst === 'petals') Animations.petalShower(host, 3000, 220);
         else Animations.confettiShower(host, 60, 2500);
+      };
+      wrap.onclick = burstFn;
+      // Keyboard/switch access: the wrap is role=button + tabindex.
+      wrap.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          burstFn();
+        }
       };
     }
   },
@@ -901,7 +996,7 @@ const App = {
       relationship: this.state.relationship,
       lang: this.state.lang || 'en',
       customRelationship: this.state.relationship === 'other'
-        ? (this.state.customRelationship || document.getElementById('custom-relationship')?.value.trim() || 'Loved One')
+        ? (this.state.customRelationship || document.getElementById('custom-relationship')?.value.trim() || t('lovedOne', this.state.lang || 'en'))
         : '',
       occasion: this.state.occasion || 'birthday',
       name: name,
@@ -919,7 +1014,10 @@ const App = {
   collectPreviewData() {
     const data = this.collectData();
     // For slots with a local file selected but not yet uploaded,
-    // use the local preview dataURL so preview shows instantly
+    // use the local preview dataURL so preview shows instantly.
+    // File wins over pasted URL (same as collectData): if a file is
+    // chosen but its FileReader hasn't finished yet, skip the slot
+    // rather than flashing a pasted URL the final link won't use.
     const previewUrls = [];
     const previewTexts = [];
     for (const i of this.photoSlots()) {
@@ -932,8 +1030,11 @@ const App = {
         if (localSrc) {
           previewUrls.push(localSrc);
           previewTexts.push(caption);
-          continue;
+        } else if (this.state.photoUrls_fromFiles[i]) {
+          previewUrls.push(this.state.photoUrls_fromFiles[i]);
+          previewTexts.push(caption);
         }
+        continue;
       }
       const pasted = this.getUrlForSlot(i);
       if (pasted) {
@@ -961,6 +1062,15 @@ const App = {
       alert(t('alertName', this.state.lang));
       return;
     }
+    if (!this.state.occasion || !this.state.relationship) {
+      alert(t('alertTopic', this.state.lang));
+      return;
+    }
+    if (this.state.messageMode === 'custom' && !document.getElementById('custom-message').value.trim()) {
+      alert(t('alertEmptyMessage', this.state.lang));
+      document.getElementById('custom-message').focus();
+      return;
+    }
     this.isPreviewing = true;
     const btn = document.getElementById('btn-preview');
     if (btn) {
@@ -969,6 +1079,7 @@ const App = {
     }
     try {
       const data = this.collectPreviewData();
+      this.lastPreviewData = data;
       this.renderRecipientView('preview-content', data);
       this.showSection('preview');
     } finally {
@@ -994,6 +1105,15 @@ const App = {
       this.setLoadingStatus(t('generatingBusy', lang));
       return;
     }
+    const earlyName = document.getElementById('recipient-name').value.trim();
+    if (!earlyName) {
+      alert(t('alertName', lang));
+      return;
+    }
+    if (this.state.messageMode === 'custom' && !document.getElementById('custom-message').value.trim()) {
+      alert(t('alertEmptyMessage', lang));
+      return;
+    }
     this.isGenerating = true;
     const genBtn = document.getElementById('btn-generate');
     if (genBtn) {
@@ -1009,21 +1129,22 @@ const App = {
       const slots = this.photoSlots();
       const uploadedUrls = {};
       const fileSlots = slots.filter(s => this.state.photos[s]);
+      const ordinalOf = (slotId) => fileSlots.indexOf(slotId) + 1;
       let done = 0;
       for (const i of fileSlots) {
         done++;
         this.setLoadingStatus(t('loadUploading', lang, { a: done, b: fileSlots.length }));
         try {
-          console.log('Uploading photo ' + (i + 1) + '...');
+          console.log('Uploading photo ' + ordinalOf(i) + '...');
           const url = await Share.uploadImage(this.state.photos[i]);
           if (url) {
             uploadedUrls[i] = url;
-            console.log('Photo ' + (i + 1) + ' uploaded:', url);
+            console.log('Photo ' + ordinalOf(i) + ' uploaded:', url);
           } else {
-            console.warn('Photo ' + (i + 1) + ' upload returned null');
+            console.warn('Photo ' + ordinalOf(i) + ' upload returned null');
           }
         } catch (photoErr) {
-          console.warn('Photo ' + (i + 1) + ' upload failed:', photoErr);
+          console.warn('Photo ' + ordinalOf(i) + ' upload failed:', photoErr);
         }
       }
       this.state.photoUrls_fromFiles = uploadedUrls;
@@ -1038,7 +1159,7 @@ const App = {
       const tiers = [{ w: 512, q: 0.6 }, { w: 384, q: 0.55 }, { w: 256, q: 0.5 }];
       for (const i of fileSlots) {
         if (!uploadedUrls[i]) {
-          this.setLoadingStatus(t('loadPacking', lang, { a: i + 1 }));
+          this.setLoadingStatus(t('loadPacking', lang, { a: ordinalOf(i) }));
           let placed = false;
           for (const tier of tiers) {
             try {
@@ -1050,12 +1171,12 @@ const App = {
               if (trialLength <= (Share.imageHost.maxEmbedLinkLength || 60000)) {
                 embedded++;
                 placed = true;
-                console.log('Photo ' + (i + 1) + ' embedded at ' + tier.w + 'px (' + thumb.length + ' chars)');
+                console.log('Photo ' + ordinalOf(i) + ' embedded at ' + tier.w + 'px (' + thumb.length + ' chars)');
                 break;
               }
               uploadedUrls[i] = null; // too big at this size - try smaller tier
             } catch (thumbErr) {
-              console.warn('Photo ' + (i + 1) + ' embed failed:', thumbErr && thumbErr.message);
+              console.warn('Photo ' + ordinalOf(i) + ' embed failed:', thumbErr && thumbErr.message);
               if (!heicWarned && thumbErr && /HEIC/i.test(thumbErr.message || '')) {
                 heicWarned = true;
                 alert(t('alertHeic', lang));
@@ -1065,8 +1186,8 @@ const App = {
           }
           if (!placed) {
             uploadedUrls[i] = null;
-            skipped.push(i + 1);
-            console.warn('Photo ' + (i + 1) + ' could not fit into the link, skipped');
+            skipped.push(ordinalOf(i));
+            console.warn('Photo ' + ordinalOf(i) + ' could not fit into the link, skipped');
           }
         }
       }
@@ -1142,6 +1263,7 @@ const App = {
         note += ' ' + t('noteTruncate', lang);
       }
       subtitle.textContent = note;
+      this.lastShareNote = note;
 
       this.showSection('share');
     } catch (err) {
@@ -1193,7 +1315,7 @@ const App = {
         const safeUrl = Share.sanitizePhotoUrl(photos[i]);
         if (!safeUrl) continue;
         html += `<div style="opacity: 0; animation: scaleIn 0.5s ease ${0.5 + i * 0.2}s forwards; max-width: 280px; width: 100%;">`;
-        html += `<img src="${this.escapeHtml(safeUrl)}" alt="Memory ${i + 1}" referrerpolicy="no-referrer" style="width: 100%; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 15px var(--shadow);" onerror="this.parentNode.style.display='none'">`;
+        html += `<img src="${this.escapeHtml(safeUrl)}" alt="${this.escapeHtml(t('memoryAlt', this.state.lang || data.lang || 'en', { n: i + 1 }))}" referrerpolicy="no-referrer" style="width: 100%; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 15px var(--shadow);" onerror="this.parentNode.style.display='none'">`;
         if (photoTexts[i]) {
           html += `<div style="font-size: 0.85rem; color: var(--text-light); font-style: italic; margin-top: 0.4rem;">${this.escapeHtml(photoTexts[i])}</div>`;
         }
@@ -1281,7 +1403,7 @@ const App = {
         if (!safeUrl) continue;
         const delay = i * 140;
         galleryHtml += `<div class="recipient-gallery-item" data-index="${i}" style="transition-delay:${delay}ms">`;
-        galleryHtml += `<img src="${this.escapeHtml(safeUrl)}" alt="Memory ${i + 1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.style.display='none'">`;
+        galleryHtml += `<img src="${this.escapeHtml(safeUrl)}" alt="${this.escapeHtml(t('memoryAlt', this.state.lang || data.lang || 'en', { n: i + 1 }))}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.style.display='none'">`;
         if (photoTexts[i]) {
           galleryHtml += `<div class="gallery-item-text">${this.escapeHtml(photoTexts[i])}</div>`;
         }
@@ -1632,14 +1754,32 @@ const App = {
     if (closingHearts) {
       closingHearts.textContent = (this.occasionMeta[occ] || this.occasionMeta.birthday).closing;
     }
-    // Keep the corner toggle label translated too.
+    // Keep the corner toggle + prompt labels translated too.
     const toggle = document.getElementById('btn-music-toggle');
     if (toggle && document.getElementById('music-controls').style.display !== 'none') {
       const st = this.recipientMusicState || 'paused';
       toggle.setAttribute('aria-label', st === 'playing' ? t('musicPause', lang) : (st === 'error' ? t('musicError', lang) : (st === 'loading' ? t('musicLoading', lang) : t('musicPlay', lang))));
     }
+    const musicPrompt = document.getElementById('music-prompt');
+    if (musicPrompt) musicPrompt.setAttribute('aria-label', t('musicPrompt', lang));
+    this.translateCandles(lang);
     this.renderCenterpiece(occ, lang);
     this.renderRecipientDetails(data);
+  },
+
+  // Arabic year/unit plural helper: سنة/سنتان/سنوات/سنة.
+  arYearWord(n) {
+    if (n === 1) return 'سنة';
+    if (n === 2) return 'سنتان';
+    if (n >= 3 && n <= 10) return 'سنوات';
+    return 'سنة';
+  },
+
+  arUnitWord(n, one, two, few, many) {
+    if (n === 1) return one;
+    if (n === 2) return two;
+    if (n >= 3 && n <= 10) return few;
+    return many;
   },
 
   // Birthday details block (countdown or plain text)
@@ -1647,12 +1787,14 @@ const App = {
     data.lang = this.state.lang || data.lang || 'en';
     const details = Generator.getOccasionDetails(data);
     const dob = data.fields && data.fields.dob;
-    if (dob && !isNaN(new Date(dob).getTime())) {
-      const info = Generator.getBirthdayInfo(dob);
+    const info = dob ? Generator.getBirthdayInfo(dob) : null;
+    this._cdMinuteKey = null;
+    if (info) {
       const lang = this.state.lang || 'en';
+      const turningAge = info.age + 1;
       const turning = lang === 'ar'
-        ? `${t('turningWord', lang)} ${info ? info.age + 1 : ''} سنوات`
-        : `${t('turningWord', lang)} ${info ? info.age + 1 : ''}`;
+        ? `${t('turningWord', lang)} ${turningAge} ${this.arYearWord(turningAge)}`
+        : `${t('turningWord', lang)} ${turningAge}`;
       document.getElementById('recipient-details').style.display = 'block';
       document.getElementById('recipient-details-content').innerHTML = `
         <div class="detail-label">${t('cdLabel', lang)}</div>
@@ -1678,10 +1820,12 @@ const App = {
     }
   },
 
-  // Live ticking countdown to the next birthday (updates every second)
+  // Live ticking countdown to the next birthday (updates every second).
+  // Parses the date as local time (avoids UTC-midnight shift) and keeps
+  // ticking across midnight so a page left open never freezes.
   startBirthdayCountdown(dob) {
-    const birthDate = new Date(dob);
-    if (isNaN(birthDate.getTime())) return;
+    const birthDate = (Generator.parseLocalDate ? Generator.parseLocalDate(dob) : null) || null;
+    if (!birthDate) return;
     if (this.countdownTimer) clearInterval(this.countdownTimer);
     this._cdMinuteKey = null;
     const set = (id, v) => {
@@ -1690,20 +1834,39 @@ const App = {
     };
     const update = () => {
       const now = new Date();
-      let target = new Date(now.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-      const isToday = target.getMonth() === now.getMonth() && target.getDate() === now.getDate();
-      if (!isToday && target <= now) {
-        target = new Date(now.getFullYear() + 1, birthDate.getMonth(), birthDate.getDate());
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // Leap babies celebrate Feb 28 in non-leap years (construct
+      // directly — mutating a rolled-over Mar 1 would land on Mar 28).
+      let tDay = birthDate.getDate();
+      if (birthDate.getMonth() === 1 && tDay === 29) {
+        const y = now.getFullYear();
+        const isLeap = (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+        if (!isLeap) tDay = 28;
       }
-      const diff = target - new Date();
+      let target = new Date(now.getFullYear(), birthDate.getMonth(), tDay);
+      const isToday = target.getMonth() === now.getMonth() && target.getDate() === now.getDate();
+      if (!isToday && target < startOfToday) {
+        const yNext = now.getFullYear() + 1;
+        let dNext = birthDate.getDate();
+        if (birthDate.getMonth() === 1 && dNext === 29) {
+          const isLeapNext = (yNext % 4 === 0 && yNext % 100 !== 0) || (yNext % 400 === 0);
+          if (!isLeapNext) dNext = 28;
+        }
+        target = new Date(yNext, birthDate.getMonth(), dNext);
+      }
+      const diff = target - now;
       const statusEl = document.getElementById('cd-status');
-      if (diff <= 0) {
+      if (isToday) {
+        // Birthday itself: show zeros + greeting, but keep the timer
+        // running so midnight rolls into next year's countdown.
         set('cd-d', 0); set('cd-h', 0); set('cd-m', 0); set('cd-s', 0);
         const label = document.querySelector('#recipient-details-content .detail-label');
         if (label) label.textContent = t('todayText', this.state.lang);
         if (statusEl) statusEl.textContent = t('todayText', this.state.lang);
-        if (this.countdownTimer) clearInterval(this.countdownTimer);
-        this.countdownTimer = null;
+        return;
+      }
+      if (diff <= 0) {
+        set('cd-d', 0); set('cd-h', 0); set('cd-m', 0); set('cd-s', 0);
         return;
       }
       const s = Math.floor(diff / 1000);
@@ -1719,9 +1882,11 @@ const App = {
       if (statusEl && this._cdMinuteKey !== minuteKey) {
         this._cdMinuteKey = minuteKey;
         const lang = this.state.lang || 'en';
-        statusEl.textContent = lang === 'ar'
-          ? `متبقي ${d} يوم، ${h} ساعة، ${m} دقيقة`
-          : `${d} days, ${h} hours, ${m} minutes left`;
+        if (lang === 'ar') {
+          statusEl.textContent = `متبقي ${d} ${this.arUnitWord(d, 'يوم', 'يومان', 'أيام', 'يوم')}، ${h} ${this.arUnitWord(h, 'ساعة', 'ساعتان', 'ساعات', 'ساعة')}، ${m} ${this.arUnitWord(m, 'دقيقة', 'دقيقتان', 'دقائق', 'دقيقة')}`;
+        } else {
+          statusEl.textContent = `${d} day${d === 1 ? '' : 's'}, ${h} hour${h === 1 ? '' : 's'}, ${m} minute${m === 1 ? '' : 's'} left`;
+        }
       }
     };
     this.countdownTimer = setInterval(update, 1000);
@@ -1735,10 +1900,15 @@ const App = {
     if (!row) return;
     if (row.dataset.wired) {
       // Second gift in one page lifetime: restore fresh lit candles.
+      if (row._blowTimers) {
+        row._blowTimers.forEach(t => clearTimeout(t));
+        row._blowTimers = null;
+      }
       row.querySelectorAll('.candle').forEach(c => {
         c.classList.remove('out');
         c.setAttribute('aria-pressed', 'false');
       });
+      this.translateCandles();
       const wishEl = document.getElementById('wish-text');
       if (wishEl) wishEl.style.display = 'none';
       const blowEl = document.getElementById('btn-blow');
@@ -1748,6 +1918,7 @@ const App = {
       return;
     }
     row.dataset.wired = '1';
+    this.translateCandles();
     const candles = Array.from(row.querySelectorAll('.candle'));
     const wish = document.getElementById('wish-text');
     const blowBtn = document.getElementById('btn-blow');
@@ -1769,9 +1940,15 @@ const App = {
 
     candles.forEach(c => c.addEventListener('click', () => blowOne(c)));
     blowBtn.addEventListener('click', () => {
-      candles.forEach((c, i) => setTimeout(() => blowOne(c), i * 200));
+      // Track staggered timers so Relight mid-sequence cancels pending blows.
+      if (row._blowTimers) row._blowTimers.forEach(t => clearTimeout(t));
+      row._blowTimers = candles.map((c, i) => setTimeout(() => blowOne(c), i * 200));
     });
     relightBtn.addEventListener('click', () => {
+      if (row._blowTimers) {
+        row._blowTimers.forEach(t => clearTimeout(t));
+        row._blowTimers = null;
+      }
       candles.forEach(c => {
         c.classList.remove('out');
         c.setAttribute('aria-pressed', 'false');
@@ -1907,9 +2084,20 @@ const App = {
       };
     }
     Animations.stopFloatingHearts();
+    // Cancel any pending staggered cake timers.
+    try {
+      const row = document.getElementById('candles-row');
+      if (row && row._blowTimers) {
+        row._blowTimers.forEach(t => clearTimeout(t));
+        row._blowTimers = null;
+      }
+    } catch (e) { /* ignore */ }
     this.isGenerating = false;
     this.isPreviewing = false;
     this.lastRecipientData = null;
+    this.lastShareNote = '';
+    this.lastPreviewData = null;
+    this._cdMinuteKey = null;
 
     this.state = {
       currentSection: 'hero',
@@ -1978,6 +2166,28 @@ const App = {
     // Remove any dynamically added captions
     const mainCaption = document.getElementById('recipient-main-caption');
     if (mainCaption) mainCaption.remove();
+
+    // Clear stale output DOM so the next gift starts fresh.
+    const previewContent = document.getElementById('preview-content');
+    if (previewContent) previewContent.innerHTML = '';
+    const shareLink = document.getElementById('share-link');
+    if (shareLink) shareLink.value = '';
+    const qrImage = document.getElementById('qr-image');
+    if (qrImage) qrImage.removeAttribute('src');
+    const qrDownload = document.getElementById('qr-download');
+    if (qrDownload) {
+      qrDownload.removeAttribute('href');
+      try { qrDownload.onclick = null; } catch (e) { /* ignore */ }
+    }
+    const galleryGrid = document.getElementById('recipient-gallery-grid');
+    if (galleryGrid) galleryGrid.innerHTML = '';
+    const detailsContent = document.getElementById('recipient-details-content');
+    if (detailsContent) detailsContent.innerHTML = '';
+    const recipientRoot = document.getElementById('recipient-view');
+    if (recipientRoot) {
+      try { delete recipientRoot.dataset.tiltOn; } catch (e) { recipientRoot.removeAttribute('data-tilt-on'); }
+      recipientRoot.removeAttribute('data-occasion');
+    }
 
     // Restore default theme on the page
     document.documentElement.setAttribute('data-theme', 'classic');

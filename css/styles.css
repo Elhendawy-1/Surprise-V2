@@ -434,6 +434,8 @@ body {
   color: var(--text-light);
   line-height: 1.7;
   min-height: 80px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ===== Theme Grid ===== */
@@ -528,6 +530,16 @@ body {
 
 .switch input:checked + .slider::before {
   transform: translateX(22px);
+}
+
+/* RTL: the knob travels right-to-left instead. */
+html[dir="rtl"] .switch input:checked + .slider::before {
+  transform: translateX(-22px);
+}
+
+html[dir="rtl"] .slider::before {
+  left: auto;
+  right: 3px;
 }
 
 .toggle-label {
@@ -690,6 +702,13 @@ body {
   font-size: 0.9rem;
   background: var(--card-bg);
   color: var(--text);
+  /* URLs are always LTR, even on the Arabic (RTL) share screen. */
+  direction: ltr;
+  text-align: left;
+}
+
+html[dir="rtl"] .share-link {
+  text-align: right;
 }
 
 .share-qr {
@@ -742,7 +761,9 @@ body {
 
 .photo-text-input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 0.75rem;
+  min-height: 44px;
+  box-sizing: border-box;
   border: 1px solid var(--card-border);
   border-radius: 8px;
   font-family: var(--font-body);
@@ -755,7 +776,9 @@ body {
 
 .photo-url-input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 0.75rem;
+  min-height: 44px;
+  box-sizing: border-box;
   border: 1px dashed var(--card-border);
   border-radius: 8px;
   font-family: var(--font-body);
@@ -847,9 +870,12 @@ body {
 .photo-slot .btn-remove {
   top: 4px;
   right: 4px;
-  width: 24px;
-  height: 24px;
-  font-size: 0.8rem;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .form-hint {
@@ -1419,6 +1445,14 @@ body {
   transition: transform 1s ease;
 }
 
+html[dir="rtl"] .recipient-gallery-item::after {
+  transform: translateX(130%);
+}
+
+html[dir="rtl"] .recipient-gallery-item.visible:hover::after {
+  transform: translateX(-130%);
+}
+
 .recipient-gallery-item .gallery-item-text {
   transition: background 0.4s ease;
 }
@@ -1432,6 +1466,7 @@ body {
   width: 100%;
   height: auto;
   max-height: 75vh;
+  max-height: 75dvh;
   object-fit: contain;
   display: block;
   background: #000;
@@ -1450,6 +1485,7 @@ body {
 .recipient-gallery-item.full-width img {
   height: auto;
   max-height: 75vh;
+  max-height: 75dvh;
 }
 
 /* Message Section */
@@ -1498,6 +1534,8 @@ body {
   line-height: 2;
   color: var(--text);
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
   margin-bottom: 2rem;
   text-align: center;
 }
@@ -1543,6 +1581,7 @@ body {
 /* Live birthday countdown */
 .countdown-grid {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.6rem;
   justify-content: center;
   margin-top: 1.25rem;
@@ -1658,6 +1697,23 @@ html[lang="ar"] {
   --font-heading: 'Aref Ruqaa', 'Playfair Display', serif;
   --font-body: 'Cairo', 'Lora', sans-serif;
   --font-script: 'Aref Ruqaa', 'Dancing Script', serif;
+}
+
+/* Arabic script is cursive: letter-spacing disconnects letters, and
+   synthetic italics slant a script that has no italic form. */
+html[lang="ar"] .btn-primary,
+html[lang="ar"] .btn-secondary,
+html[lang="ar"] .btn-copy {
+  letter-spacing: 0;
+}
+
+html[lang="ar"] .message-preview,
+html[lang="ar"] .form-hint,
+html[lang="ar"] .recipient-message,
+html[lang="ar"] .recipient-footer,
+html[lang="ar"] .photo-url-input::placeholder,
+html[lang="ar"] .photo-text-input::placeholder {
+  font-style: normal;
 }
 
 /* Right-to-left layout fixes */
@@ -1822,7 +1878,7 @@ html[dir="rtl"] .photo-slot .btn-remove {
   font-size: 0.9rem;
   margin-top: 0.5rem;
   font-style: italic;
-  max-width: 320px;
+  max-width: min(320px, calc(100vw - 2rem));
   text-align: center;
 }
 
@@ -1909,6 +1965,7 @@ html[dir="rtl"] .photo-slot .btn-remove {
   .recipient-gallery-item.full-width img {
     height: auto;
     max-height: 60vh;
+    max-height: 60dvh;
   }
 
   .recipient-gallery-heading {
@@ -2017,7 +2074,8 @@ html[dir="rtl"] .photo-slot .btn-remove {
   }
 
   .recipient-view,
-  .recipient-bg {
+  .recipient-bg,
+  .loading-overlay {
     height: 100dvh;
   }
 }
@@ -2084,6 +2142,7 @@ img,
 video,
 canvas {
   max-width: 100%;
+  height: auto;
 }
 
 #qr-image {
@@ -2095,6 +2154,7 @@ canvas {
 /* Theme preview: live swatch + name + HEX before generation. */
 .theme-preview {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
@@ -2125,11 +2185,14 @@ canvas {
   direction: ltr;
 }
 
-/* Music control: safe-area aware, clear states beyond color alone. */
+/* Music control: safe-area aware, clear states beyond color alone.
+   Physical `right/left` first as fallback, logical `inset-inline-*`
+   last so it wins where supported; the html[dir=rtl] overrides stay
+   for older engines without logical properties. */
 .music-controls {
   bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
-  inset-inline-end: 2rem;
   right: 2rem;
+  inset-inline-end: 2rem;
 }
 
 html[dir="rtl"] .music-controls {
@@ -2139,8 +2202,8 @@ html[dir="rtl"] .music-controls {
 
 .lang-toggle {
   bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
-  inset-inline-start: 2rem;
   left: 2rem;
+  inset-inline-start: 2rem;
 }
 
 html[dir="rtl"] .lang-toggle {
@@ -2200,13 +2263,31 @@ html[dir="rtl"] .lang-toggle {
 @media (max-width: 480px) {
   .music-controls {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    inset-inline-end: 1rem;
     right: 1rem;
+    inset-inline-end: 1rem;
   }
 
   .lang-toggle {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-    inset-inline-start: 1rem;
     left: 1rem;
+    inset-inline-start: 1rem;
+  }
+
+  /* Creator flow needs clearance above the fixed language pill so the
+     pill never covers photo inputs or action buttons (screenshot bug).
+     The recipient side already had this via closing padding + scroll
+     margins; the creator side had none. */
+  .section-inner {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .form-actions {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Lift the tap-to-play prompt above the pill band so the three fixed
+     elements (lang pill + music button + prompt) never stack on 320px. */
+  .music-prompt {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
 }

@@ -1,31 +1,41 @@
 /* ===== Animations Module ===== */
 
 const Animations = {
-  // Interval IDs for looping heart/petal/balloon effects (started by
-  // startFloatingHearts/startPetalDrift/startBalloonDrift, cleared by
-  // stopFloatingHearts). Named distinctly from the hearts() method below -
-  // they used to share the "hearts" key on this object, which silently
-  // made this array unreachable (the method always won) and broke every
-  // start/stop call. Kept as an array of setInterval ids, same as before.
+  // Timer registry for looping + one-shot effects (intervals from
+  // startFloatingHearts/startPetalDrift/startBalloonDrift/petalShower,
+  // plus staggered timeouts from celebrationBurst/confettiShower).
+  // stopFloatingHearts() clears everything so reset/pagehide/visibility
+  // restarts never leave orphaned nodes appending in the background.
+  // Named distinctly from the hearts() method below - they used to share
+  // the "hearts" key on this object, which silently made this array
+  // unreachable (the method always won) and broke every start/stop call.
   heartTimerIds: [],
   particles: [],
+  burstTimeoutIds: [],
 
   // Create a floating heart
   createHeart(container) {
     const heart = document.createElement('span');
     heart.className = 'floating-heart';
     heart.innerHTML = ['&#10084;', '&#128151;', '&#128150;', '&#128149;', '&#128152;'][Math.floor(Math.random() * 5)];
+    const fallTime = Math.random() * 4 + 4; // 4-8s rise
     heart.style.left = Math.random() * 100 + 'vw';
     heart.style.fontSize = (Math.random() * 1.5 + 0.8) + 'rem';
-    heart.style.animationDuration = (Math.random() * 4 + 4) + 's';
+    // Two comma-separated durations: floatUp fall time + sway rhythm
+    // (CSS declares `floatUp ..., sway 3.4s ...` — keep sway fixed so the
+    // rhythm doesn't couple to fall speed).
+    heart.style.animationDuration = fallTime + 's, 3.4s';
     heart.style.opacity = Math.random() * 0.7 + 0.3;
     heart.style.color = `hsl(${Math.random() * 30 + 330}, 80%, 65%)`;
 
     (container || document.body).appendChild(heart);
 
-    heart.addEventListener('animationend', () => {
-      heart.remove();
+    heart.addEventListener('animationend', (e) => {
+      if (!e || !e.animationName || e.animationName === 'floatUp') heart.remove();
     });
+    // Safety cleanup: reduced-motion CSS sets animation:none so
+    // animationend never fires — never leave a permanent frozen node.
+    setTimeout(() => heart.remove(), (fallTime + 1) * 1000);
 
     return heart;
   },
@@ -40,10 +50,12 @@ const Animations = {
     return id;
   },
 
-  // Stop floating hearts
+  // Stop all ambient + in-flight celebration timers.
   stopFloatingHearts() {
     this.heartTimerIds.forEach(id => clearInterval(id));
     this.heartTimerIds = [];
+    this.burstTimeoutIds.forEach(id => clearTimeout(id));
+    this.burstTimeoutIds = [];
   },
 
   // Create particle burst
@@ -84,15 +96,18 @@ const Animations = {
     }
   },
 
-  // Create canvas particles background
+  // Create canvas particles background (unused by the app today;
+  // kept for future use — destroy() now cancels the rAF loop).
   createParticlesBackground(container, count = 50) {
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;';
-    container.style.position = 'relative';
+    const prevPosition = container.style.position;
+    if (!prevPosition || prevPosition === 'static') container.style.position = 'relative';
     container.appendChild(canvas);
 
     const ctx = canvas.getContext('2d');
     let w, h, particlesArr = [];
+    let rafId = 0, cancelled = false;
 
     function resize() {
       w = canvas.width = container.offsetWidth;
@@ -112,6 +127,7 @@ const Animations = {
     }
 
     function animate() {
+      if (cancelled) return;
       ctx.clearRect(0, 0, w, h);
       particlesArr.forEach(p => {
         p.x += p.speedX;
@@ -126,7 +142,7 @@ const Animations = {
         ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${p.opacity})`;
         ctx.fill();
       });
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
     }
 
     resize();
@@ -139,6 +155,8 @@ const Animations = {
 
     return {
       destroy() {
+        cancelled = true;
+        if (rafId) cancelAnimationFrame(rafId);
         canvas.remove();
         window.removeEventListener('resize', resize);
       }
@@ -223,11 +241,17 @@ const Animations = {
     return id;
   },
 
-  // Festive shower right when the gift opens
+  // Festive shower right when the gift opens (tracked so stop clears it)
   petalShower(container, durationMs = 6000, interval = 320) {
     if (this.calmMode()) return null;
     const id = setInterval(() => this.dropPetal(container), interval);
-    setTimeout(() => clearInterval(id), durationMs);
+    this.heartTimerIds.push(id);
+    const stopId = setTimeout(() => {
+      clearInterval(id);
+      const at = this.heartTimerIds.indexOf(id);
+      if (at !== -1) this.heartTimerIds.splice(at, 1);
+    }, durationMs);
+    this.burstTimeoutIds.push(stopId);
     return id;
   },
 
@@ -238,7 +262,7 @@ const Animations = {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight * 0.42;
     for (let i = 0; i < count; i++) {
-      setTimeout(() => {
+      const tid = setTimeout(() => {
         const piece = document.createElement('span');
         piece.className = 'burst-piece';
         piece.textContent = Math.random() < 0.55 ? this.pick(this.flowers()) : this.pick(this.hearts());
@@ -251,6 +275,7 @@ const Animations = {
         piece.addEventListener('animationend', () => piece.remove());
         setTimeout(() => piece.remove(), 2200);
       }, i * 28);
+      this.burstTimeoutIds.push(tid);
     }
   },
 
@@ -280,13 +305,13 @@ const Animations = {
     return id;
   },
 
-  // Confetti rain right when the gift opens
+  // Confetti rain right when the gift opens (tracked so stop clears it)
   confettiShower(container, count = 90, durationMs = 5500) {
     if (this.calmMode()) return;
     const host = container || document.body;
     const colors = ['#e63946', '#ffd700', '#f8a4c8', '#d4af37', '#c9a0dc', '#ffffff', '#ff6b6b'];
     for (let i = 0; i < count; i++) {
-      setTimeout(() => {
+      const tid = setTimeout(() => {
         const c = document.createElement('span');
         c.className = 'confetti-piece';
         const size = Math.random() * 6 + 5;
@@ -300,6 +325,7 @@ const Animations = {
         c.addEventListener('animationend', () => c.remove());
         setTimeout(() => c.remove(), 6000);
       }, Math.random() * durationMs);
+      this.burstTimeoutIds.push(tid);
     }
   },
 

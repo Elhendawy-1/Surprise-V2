@@ -21,25 +21,25 @@
   <meta name="twitter:title" content="Send Love & Warmth - A Gift For You">
   <meta name="twitter:description" content="Someone special made you a personalized digital gift. Open it to see your photos, message, music and celebration.">
   <meta name="twitter:image" content="https://elhendawy-1.github.io/Surprise-V2/assets/images/og-preview.png">
-  <link rel="stylesheet" href="css/themes.css?v=31">
-  <link rel="stylesheet" href="css/styles.css?v=34">
-  <link rel="stylesheet" href="css/animations.css?v=31">
+  <link rel="stylesheet" href="css/themes.css?v=32">
+  <link rel="stylesheet" href="css/styles.css?v=35">
+  <link rel="stylesheet" href="css/animations.css?v=32">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500;600&family=Dancing+Script:wght@400;700&family=Cairo:wght@400;600;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <a class="skip-link" href="#btn-start" data-i18n="skipLink">Skip to gift creator</a>
-  <noscript><p class="noscript-note">This gift maker needs JavaScript to create and open gifts. Please enable JavaScript.</p></noscript>
-  <button id="lang-toggle" class="lang-toggle" aria-label="Switch language">عربي</button>
+  <noscript><p class="noscript-note" data-i18n="noscriptNote">This gift maker needs JavaScript to create and open gifts. Please enable JavaScript.</p></noscript>
+  <button id="lang-toggle" class="lang-toggle" aria-label="Switch language" data-i18n-aria="langSwitch">عربي</button>
 
   <!-- SECTION 1: Hero / Landing -->
   <section id="section-hero" class="section active">
     <div class="hero-content">
       <div class="hero-hearts" id="hero-hearts"></div>
       <h1 class="hero-title">
-        <span class="script-text">Send</span>
-        <span class="script-text">Love</span>
+        <span class="script-text" data-i18n="heroSend">Send</span>
+        <span class="script-text" data-i18n="heroLove">Love</span>
         <span class="ampersand">&amp;</span>
-        <span class="script-text">Warmth</span>
+        <span class="script-text" data-i18n="heroWarmth">Warmth</span>
       </h1>
       <p class="hero-subtitle" data-i18n="heroSubtitle">Create a personalized digital gift for someone special</p>
       <button id="btn-start" class="btn-primary" data-i18n="heroCta">Create a Gift</button>
@@ -172,7 +172,7 @@
         </div>
         <div class="form-group occasion-field" data-for="anniversary" style="display:none;">
           <label for="years-together" data-i18n="yearsLabel">Years Together (optional)</label>
-          <input type="number" id="years-together" min="1" max="100" placeholder="e.g., 5">
+          <input type="number" id="years-together" min="1" max="100" placeholder="e.g., 5" data-i18n-ph="yearsPh">
         </div>
 
         <div class="form-group occasion-field" data-for="thankYou" style="display:none;">
@@ -210,27 +210,27 @@
         <div class="form-group">
           <label data-i18n="themeLabel">Choose a Theme</label>
           <div class="theme-grid" id="theme-grid">
-            <button type="button" class="theme-swatch active" data-theme="classic" title="Classic Romantic">
+            <button type="button" class="theme-swatch active" data-theme="classic" title="Classic Romantic" data-i18n-title="themeClassicTitle">
               <span class="swatch-color" style="background: linear-gradient(135deg, #e63946, #ffd700);"></span>
               <span class="swatch-label" data-i18n="themeClassic">Classic</span>
             </button>
-            <button type="button" class="theme-swatch" data-theme="soft" title="Soft Romantic">
+            <button type="button" class="theme-swatch" data-theme="soft" title="Soft Romantic" data-i18n-title="themeSoftTitle">
               <span class="swatch-color" style="background: linear-gradient(135deg, #f8a4c8, #fcd5ce);"></span>
               <span class="swatch-label" data-i18n="themeSoft">Soft</span>
             </button>
-            <button type="button" class="theme-swatch" data-theme="deep" title="Deep Romantic">
+            <button type="button" class="theme-swatch" data-theme="deep" title="Deep Romantic" data-i18n-title="themeDeepTitle">
               <span class="swatch-color" style="background: linear-gradient(135deg, #800020, #d4af37);"></span>
               <span class="swatch-label" data-i18n="themeDeep">Deep</span>
             </button>
-            <button type="button" class="theme-swatch" data-theme="dark" title="Dark Romantic">
+            <button type="button" class="theme-swatch" data-theme="dark" title="Dark Romantic" data-i18n-title="themeDarkTitle">
               <span class="swatch-color" style="background: linear-gradient(135deg, #2d0a0a, #c9a0dc);"></span>
               <span class="swatch-label" data-i18n="themeDark">Dark</span>
             </button>
-            <button type="button" class="theme-swatch" data-theme="elegant" title="Elegant">
+            <button type="button" class="theme-swatch" data-theme="elegant" title="Elegant" data-i18n-title="themeElegantTitle">
               <span class="swatch-color" style="background: linear-gradient(135deg, #333333, #d4af37);"></span>
               <span class="swatch-label" data-i18n="themeElegant">Elegant</span>
             </button>
-            <button type="button" class="theme-swatch" data-theme="warm" title="Warm and Cozy">
+            <button type="button" class="theme-swatch" data-theme="warm" title="Warm and Cozy" data-i18n-title="themeWarmTitle">
               <span class="swatch-color" style="background: linear-gradient(135deg, #d4a373, #e9edc9);"></span>
               <span class="swatch-label" data-i18n="themeWarm">Warm</span>
             </button>
@@ -249,8 +249,8 @@
           <div class="song-choice-box">
             <div class="song-choice-current">
               <span class="song-choice-note">♪</span>
-              <span id="song-choice-name" data-i18n="songDefaultName">Topic default song</span>
-              <button type="button" id="song-choice-preview" class="song-preview-btn" aria-label="Preview song">▶</button>
+              <span id="song-choice-name" data-i18n="songDefaultName" dir="auto">Topic default song</span>
+              <button type="button" id="song-choice-preview" class="song-preview-btn" aria-label="Preview song" data-i18n-aria="songPreviewLabel">▶</button>
             </div>
             <button type="button" id="song-choice-btn" class="btn-secondary">🎼 <span data-i18n="songChooseBtn">Choose a song</span></button>
             <div class="gallery-picker" id="song-choice-picker" style="display:none;">
@@ -299,11 +299,11 @@
       <div class="share-box">
         <div class="share-link-container">
           <label class="visually-hidden" for="share-link" data-i18n="shareLinkLabel">Gift link</label>
-          <input type="text" id="share-link" class="share-link" readonly>
+          <input type="text" id="share-link" class="share-link" readonly dir="ltr">
           <button type="button" id="btn-copy" class="btn-copy" data-i18n="copyBtn">Copy</button>
         </div>
         <div class="share-qr" id="share-qr">
-          <img id="qr-image" alt="QR code for the gift link" width="400" height="400">
+          <img id="qr-image" alt="QR code for the gift link" data-i18n-alt="qrAlt" width="400" height="400">
           <div><a id="qr-download" class="qr-download" download="gift-qr.png" data-i18n="downloadQr">Download QR code</a></div>
         </div>
         <div class="share-actions">
@@ -347,11 +347,11 @@
         <p class="cake-sub" data-i18n="cakeSub">Tap the candles to blow them out</p>
         <div class="cake-scene">
           <div class="candles-row" id="candles-row">
-            <button type="button" class="candle" aria-label="Blow out candle 1" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 2" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 3" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 4" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
-            <button type="button" class="candle" aria-label="Blow out candle 5" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 1" data-candle-n="1" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 2" data-candle-n="2" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 3" data-candle-n="3" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 4" data-candle-n="4" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
+            <button type="button" class="candle" aria-label="Blow out candle 5" data-candle-n="5" aria-pressed="false"><span class="flame"></span><span class="smoke"></span><span class="wick"></span><span class="stick"></span></button>
           </div>
           <div class="cake-top"></div>
           <div class="cake-body"></div>
@@ -367,7 +367,7 @@
 
     <!-- Topic Centerpiece Section (valentine / thank-you / just-because) -->
     <div class="recipient-section recipient-centerpiece-section" id="recipient-centerpiece" style="display:none;">
-      <div class="centerpiece-wrap reveal">
+      <div class="centerpiece-wrap reveal" role="button" tabindex="0" id="centerpiece-wrap">
         <div class="centerpiece-visual" id="centerpiece-visual" aria-hidden="true"></div>
         <h3 class="centerpiece-heading" id="centerpiece-heading"></h3>
         <p class="centerpiece-sub" id="centerpiece-sub"></p>
@@ -413,11 +413,11 @@
 
   <!-- Music Controls -->
   <div class="music-controls" id="music-controls" style="display:none;">
-    <button id="btn-music-toggle" class="btn-music" aria-label="Play music" aria-pressed="false"><span aria-hidden="true" id="btn-music-icon">▶</span></button>
+    <button id="btn-music-toggle" class="btn-music" aria-label="Play music" data-i18n-aria="musicPlay" aria-pressed="false"><span aria-hidden="true" id="btn-music-icon">▶</span></button>
   </div>
 
   <!-- Tap-to-play music prompt (browsers block autoplay until a tap) -->
-  <button id="music-prompt" class="music-prompt" style="display:none;" aria-label="Play background music">&#127925; <span data-i18n="musicPrompt">Tap to play music</span></button>
+  <button id="music-prompt" class="music-prompt" style="display:none;" aria-label="Play background music" data-i18n-aria="musicPrompt">&#127925; <span data-i18n="musicPrompt">Tap to play music</span></button>
 
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loading-overlay" style="display:none;">
@@ -426,10 +426,10 @@
     <p class="loading-sub" id="loading-status"></p>
   </div>
 
-  <script src="js/animations.js?v=33"></script>
-  <script src="js/generator.js?v=33"></script>
-  <script src="js/share.js?v=33"></script>
-  <script src="js/i18n.js?v=33"></script>
-  <script src="js/app.js?v=33"></script>
+  <script src="js/animations.js?v=34"></script>
+  <script src="js/generator.js?v=34"></script>
+  <script src="js/share.js?v=34"></script>
+  <script src="js/i18n.js?v=34"></script>
+  <script src="js/app.js?v=34"></script>
 </body>
 </html>

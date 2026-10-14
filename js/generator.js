@@ -357,16 +357,18 @@ const Generator = {
 
   // Generate a message based on relationship + occasion
   generateMessage(data) {
-    const { relationship, occasion, name, fields } = data;
+    const { relationship, occasion, name, fields } = data || {};
     const occ = occasion || 'birthday';
     const table = this.isAr(data) ? this.templatesAr : this.templates;
     const rel = table[relationship] || {};
     const template = rel[occ] || rel.birthday;
 
+    const safeName = (name && String(name).trim()) ? String(name).trim() : (this.isAr(data) ? 'صديقنا' : 'Friend');
+
     if (!template) {
       return this.isAr(data)
-        ? `عيد ميلاد سعيد يا ${name}! أتمنى لك يومًا رائعًا مليئًا بالحب والضحك وكل ما تستحق.`
-        : `Happy Birthday, ${name}! Wishing you a wonderful day filled with love, laughter, and everything you deserve.`;
+        ? `عيد ميلاد سعيد يا ${safeName}! أتمنى لك يومًا رائعًا مليئًا بالحب والضحك وكل ما تستحق.`
+        : `Happy Birthday, ${safeName}! Wishing you a wonderful day filled with love, laughter, and everything you deserve.`;
     }
 
     const f = fields || {};
@@ -374,12 +376,12 @@ const Generator = {
       ? { valentine: 'كل ما فيك من جمال', thankYou: 'كل ما قدمته' }
       : { valentine: 'everything you are', thankYou: 'everything you do' };
     const reason = (f.reason && f.reason.trim()) ? f.reason.trim() : (reasonDefaults[occ] || '');
-    let message = template.replace(/{name}/g, name).replace(/{reason}/g, reason);
+    let message = template.replace(/{name}/g, safeName).replace(/{reason}/g, reason);
 
     if (occ === 'anniversary') {
       const y = parseInt(f.years, 10);
       const yearsText = (!isNaN(y) && y > 0)
-        ? (this.isAr(data) ? `الاحتفال بـ${y} سنوات رائعة معًا.` : `Celebrating ${y} wonderful year${y > 1 ? 's' : ''} together.`)
+        ? (this.isAr(data) ? `الاحتفال بـ${y} ${this.arYearWord(y)} رائعة معًا.` : `Celebrating ${y} wonderful year${y > 1 ? 's' : ''} together.`)
         : '';
       message = message.replace(/{years}/g, yearsText);
     }
@@ -389,68 +391,117 @@ const Generator = {
 
   // Get greeting based on relationship + occasion
   getGreeting(data) {
-    const { relationship, occasion, name } = data;
+    const { relationship, occasion, name } = data || {};
     const occ = occasion || 'birthday';
     const table = this.isAr(data) ? this.greetingsAr : this.greetings;
     const rel = table[relationship] || {};
     const greeting = rel[occ] || rel.birthday;
+    const safeName = (name && String(name).trim()) ? String(name).trim() : (this.isAr(data) ? 'صديقنا' : 'Friend');
     if (!greeting) {
-      return this.isAr(data) ? `عيد ميلاد سعيد يا ${name}!` : `Happy Birthday, ${name}!`;
+      return this.isAr(data) ? `عيد ميلاد سعيد يا ${safeName}!` : `Happy Birthday, ${safeName}!`;
     }
-    return greeting.replace(/{name}/g, name);
+    return greeting.replace(/{name}/g, safeName);
   },
 
   // Get footer text
   getFooter(data) {
-    const { relationship } = data;
+    const { relationship } = data || {};
     if (this.isAr(data)) {
       return this.footersAr[relationship] || "مع حبي";
     }
     return this.footers[relationship] || "With love";
   },
 
+  // Parse YYYY-MM-DD as a local date (avoids UTC-midnight timezone shift)
+  // and rejects impossible calendar dates like 1990-02-30. Returns null
+  // for anything unparseable or in the future.
+  parseLocalDate(dob) {
+    if (!dob || typeof dob !== 'string') return null;
+    const m = dob.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) {
+      const d = new Date(dob);
+      return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    const y = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, d = parseInt(m[3], 10);
+    const dt = new Date(y, mo, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d) return null;
+    return dt;
+  },
+
   // Calculate birthday info
   getBirthdayInfo(dob) {
-    if (!dob) return null;
-    const birthDate = new Date(dob);
-    if (isNaN(birthDate.getTime())) return null;
+    const birthDate = this.parseLocalDate(dob);
+    if (!birthDate) return null;
     const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfBirth = new Date(birthDate.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+    if (startOfBirth > startOfToday) return null;
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-    const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    if (nextBirthday < startOfToday) {
-      nextBirthday.setFullYear(nextBirthday.getFullYear() + 1);
+    // Leap babies celebrate Feb 28 in non-leap years.
+    let nextMonth = birthDate.getMonth(), nextDay = birthDate.getDate();
+    if (nextMonth === 1 && nextDay === 29) {
+      const y = today.getFullYear();
+      const isLeap = (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+      if (!isLeap) nextDay = 28;
     }
-    const daysUntil = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
+    const nextBirthday = new Date(today.getFullYear(), nextMonth, nextDay);
+    if (nextBirthday < startOfToday) {
+      const y2 = today.getFullYear() + 1;
+      let d2 = birthDate.getDate();
+      if (birthDate.getMonth() === 1 && d2 === 29) {
+        const isLeap2 = (y2 % 4 === 0 && y2 % 100 !== 0) || (y2 % 400 === 0);
+        if (!isLeap2) d2 = 28;
+      }
+      nextBirthday.setTime(new Date(y2, birthDate.getMonth(), d2).getTime());
+    }
+    const daysUntil = Math.round((nextBirthday - startOfToday) / (1000 * 60 * 60 * 24));
     return { age, daysUntil, nextBirthday };
+  },
+
+  arYearWord(n) {
+    if (n === 1) return 'سنة';
+    if (n === 2) return 'سنتان';
+    if (n >= 3 && n <= 10) return 'سنوات';
+    return 'سنة';
+  },
+
+  arDayWord(n) {
+    if (n === 1) return 'يوم';
+    if (n === 2) return 'يومان';
+    if (n >= 3 && n <= 10) return 'أيام';
+    return 'يوم';
   },
 
   // Get details line for display (birthday countdown / anniversary)
   getOccasionDetails(data) {
-    const occ = data.occasion || 'birthday';
-    const fields = data.fields || {};
+    const occ = (data && data.occasion) || 'birthday';
+    const fields = (data && data.fields) || {};
     const ar = this.isAr(data);
     if (occ === 'birthday' && fields.dob) {
       const info = this.getBirthdayInfo(fields.dob);
       if (info) {
+        const turningAge = info.age + 1;
         if (ar) {
-          return `سيُتم ${info.age + 1} سنوات! ${info.daysUntil === 0 ? 'اليوم هو اليوم!' : 'باقي ' + info.daysUntil + ' يوم على اليوم الكبير!'}`;
+          return `سيُتم ${turningAge} ${this.arYearWord(turningAge)}! ${info.daysUntil === 0 ? 'اليوم هو اليوم!' : 'باقي ' + info.daysUntil + ' ' + this.arDayWord(info.daysUntil) + ' على اليوم الكبير!'}`;
         }
-        return `Turning ${info.age + 1}! ${info.daysUntil === 0 ? 'Today is the day!' : info.daysUntil + ' days until the big day!'}`;
+        return `Turning ${turningAge}! ${info.daysUntil === 0 ? 'Today is the day!' : info.daysUntil + ' day' + (info.daysUntil === 1 ? '' : 's') + ' until the big day!'}`;
       }
     }
     if (occ === 'anniversary') {
       const y = parseInt(fields.years, 10);
       if (!isNaN(y) && y > 0) {
-        return ar ? `الاحتفال بـ${y} سنوات معًا!` : `Celebrating ${y} year${y > 1 ? 's' : ''} together!`;
+        return ar ? `الاحتفال بـ${y} ${this.arYearWord(y)} معًا!` : `Celebrating ${y} year${y > 1 ? 's' : ''} together!`;
       }
       if (fields.anniversaryDate) {
         try {
-          const d = new Date(fields.anniversaryDate).toLocaleDateString(ar ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const parsed = this.parseLocalDate(fields.anniversaryDate);
+          if (!parsed || isNaN(parsed.getTime())) return '';
+          const d = parsed.toLocaleDateString(ar ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          if (/invalid/i.test(d)) return '';
           return ar ? `منذ ${d}` : `Celebrating since ${d}`;
         } catch (e) { /* fall through */ }
       }

@@ -128,6 +128,9 @@ const Share = {
 
   // Contents-API target for a device upload (pure, testable).
   githubUploadTarget(repo, fileName, nowMs) {
+    if (!repo || typeof repo !== 'string' || repo.indexOf('/') === -1) {
+      throw new Error('Invalid GitHub repo (expected OWNER/REPO)');
+    }
     const safe = this.sanitizeUploadName(fileName);
     const path = 'assets/photos/' + (nowMs || Date.now()) + '-' + safe;
     return {
@@ -189,6 +192,9 @@ const Share = {
     throw new Error('GitHub upload failed');
   },
   fitWithin(w, h, maxWidth) {
+    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0 || !isFinite(maxWidth) || maxWidth <= 0) {
+      return { width: 0, height: 0 };
+    }
     const scale = Math.min(1, maxWidth / Math.max(w, h));
     return { width: Math.round(w * scale), height: Math.round(h * scale) };
   },
@@ -288,7 +294,7 @@ const Share = {
     if (!url || typeof url !== 'string') return '';
     const u = url.trim();
     if (!/^(https?:\/\/|data:image\/)/i.test(u)) return '';
-    if (/["'<>\s]/.test(u)) return '';
+    if (/["'<>\s`]/.test(u)) return '';
     return u;
   },
 
@@ -350,7 +356,7 @@ const Share = {
 
   // Convert share-page links into direct image links that render in <img>
   normalizeImageUrl(url) {
-    if (!url) return '';
+    if (!url || typeof url !== 'string') return '';
     // Strip query string and hash (e.g. ?raw=true) before matching
     let u = url.trim().split('?')[0].split('#')[0];
     let m;
@@ -375,8 +381,8 @@ const Share = {
   },
 
   encodeData(data) {
-    const jsonStr = JSON.stringify(data);
     try {
+      const jsonStr = JSON.stringify(data);
       return btoa(unescape(encodeURIComponent(jsonStr)));
     } catch (err) {
       console.error('Encode error:', err);
@@ -405,7 +411,7 @@ const Share = {
     return new Promise((resolve) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs || 8000);
-      fetch(url, Object.assign({ signal: controller.signal }, options || {}))
+      fetch(url, Object.assign({}, options || {}, { signal: controller.signal }))
         .then(response => {
           clearTimeout(timeoutId);
           if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -416,11 +422,12 @@ const Share = {
         .then(({ data, timeoutId }) => {
           clearTimeout(timeoutId);
           if (!data) return resolve(null);
-          const candidate = typeof data === 'string' ? data.trim() : (data.result_url || data.shorturl || data.link || '');
+          const candidate = typeof data === 'string' ? data.trim() : (data.result_url || data.short_url || data.shorturl || data.url || data.link || '');
           resolve(candidate && String(candidate).trim().startsWith('http') ? String(candidate).trim() : null);
         })
-        .catch(() => {
+        .catch((err) => {
           clearTimeout(timeoutId);
+          console.warn('fetchText failed for ' + url + ':', err && err.message ? err.message : err);
           resolve(null);
         });
     });
@@ -470,19 +477,23 @@ const Share = {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (err) {
+      const activeEl = document.activeElement;
       const textarea = document.createElement('textarea');
       textarea.value = text;
-      textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+      textarea.readOnly = true;
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
       document.body.appendChild(textarea);
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       textarea.select();
+      try { textarea.setSelectionRange(0, textarea.value.length); } catch (e) { /* ignore */ }
       try {
-        document.execCommand('copy');
-        return true;
+        const ok = document.execCommand('copy');
+        return !!ok;
       } catch (e) {
         return false;
       } finally {
         document.body.removeChild(textarea);
+        try { if (activeEl && activeEl.focus) activeEl.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
       }
     }
   }
