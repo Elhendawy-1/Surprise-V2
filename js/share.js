@@ -324,6 +324,57 @@ const Share = {
     }
   },
 
+  // ---- Legacy link fallback (no sharing service configured) ----
+  // When no backend is deployed, gifts are shared the original way:
+  // everything lives in the URL hash, device photos packed in as small
+  // thumbnails. Purely local work: no network calls, no shorteners.
+  maxEmbedLinkLength: 60000,
+
+  // Scale so the LARGEST side fits maxWidth (tall portraits included)
+  fitWithin(w, h, maxWidth) {
+    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0 || !isFinite(maxWidth) || maxWidth <= 0) {
+      return { width: 0, height: 0 };
+    }
+    const scale = Math.min(1, maxWidth / Math.max(w, h));
+    return { width: Math.round(w * scale), height: Math.round(h * scale) };
+  },
+
+  // Build a small thumbnail data-URL for embedding directly in the link.
+  // Fallback only, used when there is no server to upload to.
+  async makeThumbnailDataUrl(file, maxWidth = 384, quality = 0.55) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+    const dims = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.width, h: img.height, src: dataUrl });
+      img.onerror = () => reject(new Error('Cannot decode image (HEIC photos are not supported - use JPEG or a screenshot)'));
+      img.src = dataUrl;
+    });
+    const size = this.fitWithin(dims.w, dims.h, maxWidth);
+    let width = size.width;
+    let height = size.height;
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = () => reject(new Error('Cannot decode image'));
+      img.src = dims.src;
+    });
+  },
+
   // Legacy only (kept for tests / decoding old links). The app no longer
   // uses this to build share links.
   generateFullUrl(data) {

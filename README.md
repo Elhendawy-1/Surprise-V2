@@ -136,6 +136,29 @@ Share links and QR codes adapt to whatever address the site runs on (including `
 
 ---
 
+## Sharing service (optional)
+
+Sharing works out of the box with **no setup**: the gift data (and small
+photo thumbnails) travel inside the share link itself, so any static host
+works. For very photo-heavy gifts, prefer Google Drive links — huge links
+can be cut by chat apps and are too dense for QR codes.
+
+For short `#g=...` links with server-stored photos, deploy the optional
+Cloudflare Worker in `worker/`:
+
+1. `cd worker && npm install -g wrangler && wrangler login`
+2. `wrangler kv namespace create GIFTS` → put the id in `wrangler.toml`
+3. `wrangler r2 bucket create surprise-v2-images`
+4. Create a Turnstile widget (Cloudflare dashboard) and set secrets:
+   `wrangler secret put TURNSTILE_SECRET` and `wrangler secret put SESSION_SECRET`
+5. `wrangler deploy`, then set the Worker URL in `Share.config.apiBase`
+   and the Turnstile site key in `Share.config.turnstileSiteKey` (`js/share.js`)
+
+When the service is configured, the app stores gifts server-side and shares
+short links automatically; otherwise it uses self-contained links.
+
+---
+
 ## Customize
 
 - **Messages:** templates, greetings, and sign-offs in `js/generator.js` (`templates` / `templatesAr`, `greetings` / `greetingsAr`, `footers` / `footersAr`)

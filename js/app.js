@@ -1158,8 +1158,11 @@ const App = {
     this.setLoadingStatus(t('loadPreparing', lang));
 
     try {
+      // No sharing service deployed: fall back to a self-contained legacy
+      // link (gift data + packed thumbnails in the URL hash). Works with
+      // zero setup on any static host.
       if (!Share.isConfigured()) {
-        alert(t('alertNotConfigured', lang));
+        await this.generateLegacyLink(lang);
         return;
       }
       // Upload device photos (original files, no re-compression) to the
@@ -1268,6 +1271,118 @@ const App = {
       this.setLoadingStatus('');
       document.getElementById('loading-overlay').style.display = 'none';
     }
+  },
+
+  // Legacy share path: everything lives in the link itself (Base64 hash).
+  // Device photos are packed in as small thumbnails, pasted links stay as
+  // links. Used whenever the sharing service isn't configured, so sharing
+  // always works on a plain static host.
+  async generateLegacyLink(lang) {
+    const slots = this.photoSlots();
+    const uploadedUrls = {};
+    const fileSlots = slots.filter(s => this.state.photos[s]);
+    const ordinalOf = (slotId) => fileSlots.indexOf(slotId) + 1;
+    let embedded = 0;
+    const skipped = [];
+    let heicWarned = false;
+    const tiers = [{ w: 512, q: 0.6 }, { w: 384, q: 0.55 }, { w: 256, q: 0.5 }];
+    for (const i of fileSlots) {
+      this.setLoadingStatus(t('loadPacking', lang, { a: ordinalOf(i) }));
+      let placed = false;
+      for (const tier of tiers) {
+        try {
+          const thumb = await Share.makeThumbnailDataUrl(this.state.photos[i], tier.w, tier.q);
+          if (!thumb) continue;
+          uploadedUrls[i] = thumb;
+          this.state.photoUrls_fromFiles = uploadedUrls;
+          const trialLength = Share.generateFullUrl(this.collectData()).length;
+          if (trialLength <= (Share.maxEmbedLinkLength || 60000)) {
+            embedded++;
+            placed = true;
+            break;
+          }
+          uploadedUrls[i] = null; // too big at this size - try smaller tier
+        } catch (thumbErr) {
+          if (!heicWarned && thumbErr && /HEIC/i.test(thumbErr.message || '')) {
+            heicWarned = true;
+            alert(t('alertHeic', lang));
+          }
+          break; // decode errors won't improve with smaller tiers
+        }
+      }
+      if (!placed) {
+        uploadedUrls[i] = null;
+        skipped.push(ordinalOf(i));
+      }
+    }
+    this.state.photoUrls_fromFiles = uploadedUrls;
+
+    const finalData = this.collectData();
+    if (fileSlots.length > 0 && finalData.photoUrls.length === 0) {
+      alert(t('alertNoPhotos', lang));
+    }
+    this.setLoadingStatus(t('loadCreating', lang));
+    const fullUrl = Share.generateFullUrl(finalData);
+
+    // Update share section
+    document.getElementById('share-link').value = fullUrl;
+    const subtitle = document.querySelector('#section-share .section-subtitle');
+    const photoCount = finalData.photoUrls.length;
+    let note = t('noteDefault', lang);
+    if (embedded > 0 && skipped.length === 0) {
+      note = t('noteEmbedded', lang, { a: photoCount });
+    } else if (skipped.length > 0) {
+      note = t('noteSkipped', lang, { a: skipped.join(', ') });
+      alert(t('alertSkipped', lang, { a: skipped.join(', ') }));
+    }
+    // QR codes only scan when the link is short. Huge links (packed photos)
+    // produce codes no camera can read, so hide the code and say so.
+    const qrBox = document.getElementById('share-qr');
+    if (fullUrl.length <= 2000) {
+      const qrUrl = Share.getQrCodeUrl(fullUrl);
+      document.getElementById('qr-image').src = qrUrl;
+      const qrDownload = document.getElementById('qr-download');
+      if (qrDownload) {
+        qrDownload.href = qrUrl;
+        qrDownload.style.display = '';
+        // The download attribute is ignored cross-origin, so fetch
+        // the image as a blob for a real download; fall back to
+        // opening it in a new tab.
+        qrDownload.onclick = (e) => {
+          e.preventDefault();
+          fetch(qrUrl)
+            .then(r => {
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              return r.blob();
+            })
+            .then(blob => {
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = 'gift-qr-' + (finalData.occasion || 'birthday') + '.png';
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => {
+                URL.revokeObjectURL(a.href);
+                a.remove();
+              }, 1000);
+            })
+            .catch(() => window.open(qrUrl, '_blank', 'noopener'));
+        };
+      }
+      qrBox.style.display = '';
+    } else {
+      qrBox.style.display = 'none';
+      note += t('noteLong', lang);
+    }
+    // A very long link may be cut by chat apps on arrival, which
+    // breaks the whole gift. Warn clearly when that risk exists.
+    if (fullUrl.length > 8000) {
+      note += ' ' + t('noteTruncate', lang);
+    }
+    subtitle.textContent = note;
+    this.lastShareNote = note;
+
+    this.showSection('share');
   },
 
   // Escape HTML to avoid breaking markup
