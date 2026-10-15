@@ -1,357 +1,281 @@
-/* ===== Share Module ===== */
+/* ===== Share Module =====
+ * Gifts are stored server-side (see worker/worker.js); the share URL only
+ * carries a short id:  <page>#g=Ab12Cd34Ef
+ * Legacy Base64 links (#<base64 json>) are still decoded for old gifts but
+ * are never generated any more.
+ */
+
+class ShareError extends Error {
+  constructor(code, message, extra) {
+    super(message || code);
+    this.name = 'ShareError';
+    this.code = code;
+    if (extra) Object.assign(this, extra);
+  }
+}
 
 const Share = {
-  imageHost: {
-    // NOTE: verified by test (Nov 2026) that public CORS proxies do NOT
-    // forward multipart POST bodies (allorigins refetches via GET and drops
-    // the body; codetabs times out), so uploads go direct-only and fail
-    // fast on CORS errors. The thumbnail-embed fallback covers failures.
-    // Hard cap: embedded thumbnails must keep the full link under this length
-    maxEmbedLinkLength: 60000,
-    // Optional direct upload into the site's own repo (short permanent
-    // Pages URLs, works on every device). Token is set from the creator
-    // page and lives only in that browser's localStorage - never in links.
-    githubToken: '',
-    githubRepo: 'Elhendawy-1/Surprise-V2',
-    services: {
-      picrd: {
-        uploadUrl: 'https://picrd.com/api/upload',
-        fieldName: 'file',
-        getResponseUrl: (data) => {
-          if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch(e) { return null; }
-          }
-          return data.image_url || data.url || null;
-        }
-      },
-      catbox: {
-        uploadUrl: 'https://catbox.moe/user/api.php',
-        formData: { reqtype: 'fileupload' },
-        fieldName: 'fileToUpload',
-        getResponseUrl: (data) => {
-          if (typeof data === 'string') return data.trim();
-          return data.url || null;
-        }
-      }
-    }
+  config: {
+    // Set to your deployed Worker URL (see README "Sharing service").
+    apiBase: 'https://surprise-v2-api.YOUR-SUBDOMAIN.workers.dev',
+    // Public Turnstile site key (safe to expose). Required by the Worker.
+    turnstileSiteKey: '',
+    maxImageBytes: 15 * 1024 * 1024,
+    timeoutMs: 60000
+  },
+  fetchImpl: null, // tests inject a fetch; browsers use window.fetch
+  _session: null,
+
+  ShareError: ShareError,
+
+  isConfigured() {
+    const b = this.config.apiBase;
+    return !!b && /^https?:\/\//.test(b) && b.indexOf('YOUR-SUBDOMAIN') === -1;
   },
 
-  async uploadImage(file) {
-    if (!file) return null;
+  _api(path) { return this.config.apiBase.replace(/\/+$/, '') + path; },
 
-    let compressedFile;
+  async _fetch(path, options, timeoutMs) {
+    const f = this.fetchImpl || ((u, o) => fetch(u, o));
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs || this.config.timeoutMs) : null;
     try {
-      compressedFile = await this.compressImage(file);
-    } catch (e) {
-      compressedFile = file;
+      return await f(this._api(path), Object.assign({}, options, controller ? { signal: controller.signal } : {}));
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-
-    // Direct upload into the site repo first when a GitHub token is saved:
-    // photos land in assets/photos/, so links stay short and permanent.
-    const ghToken = (this.imageHost.githubToken || '').trim();
-    if (ghToken && this.imageHost.githubRepo) {
-      try {
-        const url = await this.uploadToGithub(compressedFile, ghToken, this.imageHost.githubRepo);
-        if (url) return url;
-      } catch (err) {
-        console.warn('github upload failed:', err.message);
-      }
-    }
-
-    // ImgBB first when the user saved an API key: it allows browser
-    // uploads (CORS *) and returns short, permanent, full-quality URLs.
-    const apiKey = (this.imageHost.imgbbKey || '').trim();
-    if (apiKey) {
-      try {
-        const url = await this.uploadToImgbb(compressedFile, apiKey);
-        if (url) return url;
-      } catch (err) {
-        console.warn(`imgbb upload failed:`, err.message);
-      }
-    }
-
-    const services = ['picrd', 'catbox'];
-    for (const serviceName of services) {
-      try {
-        const url = await this.uploadToService(serviceName, compressedFile);
-        if (url) return url;
-      } catch (err) {
-        console.warn(`${serviceName} upload failed:`, err.message);
-      }
-    }
-
-    return null;
   },
 
-  async uploadToImgbb(file, apiKey) {
-    const formData = new FormData();
-    formData.append('image', file, file.name || 'photo.jpg');
-    const data = await new Promise((resolve, reject) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-        reject(new Error('Request timeout'));
-      }, 30000);
-      fetch('https://api.imgbb.com/1/upload?key=' + encodeURIComponent(apiKey), {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal
-      })
-        .then(response => {
-          clearTimeout(timeoutId);
-          if (!response.ok) throw new Error('HTTP ' + response.status);
-          return response.json();
-        })
-        .then(json => {
-          clearTimeout(timeoutId);
-          resolve(json);
-        })
-        .catch(err => {
-          clearTimeout(timeoutId);
-          reject(err);
-        });
-    });
-    if (data && data.success && data.data) {
-      const url = data.data.display_url || data.data.url;
-      if (url && typeof url === 'string' && url.startsWith('http')) return url;
-    }
-    throw new Error('ImgBB upload failed');
-  },
-
-  // Scale so the LARGEST side fits maxWidth (tall portraits included)
-  // Safe repo-relative file name for a device upload (pure, testable).
-  sanitizeUploadName(name) {
-    const base = String(name || 'photo.jpg').split(/[\\/]/).pop();
-    const clean = base.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-    return (clean || 'photo.jpg').slice(-60);
-  },
-
-  // Contents-API target for a device upload (pure, testable).
-  githubUploadTarget(repo, fileName, nowMs) {
-    if (!repo || typeof repo !== 'string' || repo.indexOf('/') === -1) {
-      throw new Error('Invalid GitHub repo (expected OWNER/REPO)');
-    }
-    const safe = this.sanitizeUploadName(fileName);
-    const path = 'assets/photos/' + (nowMs || Date.now()) + '-' + safe;
-    return {
-      path: path,
-      apiUrl: 'https://api.github.com/repos/' + repo + '/contents/' + path
-    };
-  },
-
-  // Upload a file straight into the site repo via the GitHub Contents API
-  // (CORS-enabled). Returns the permanent download URL, or throws.
-  async uploadToGithub(file, token, repo) {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-    const parts = String(dataUrl).split(',');
-    if (parts.length < 2 || !parts[1]) throw new Error('Failed to encode file');
-    const target = this.githubUploadTarget(repo, file && file.name);
-    const body = JSON.stringify({
-      message: 'Add gift photo ' + target.path.split('/').pop(),
-      content: parts[1],
-      branch: 'main'
-    });
-    const json = await new Promise((resolve, reject) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-        reject(new Error('Request timeout'));
-      }, 60000);
-      fetch(target.apiUrl, {
-        method: 'PUT',
-        headers: {
-          'Authorization': 'Bearer ' + token,
-          'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-          'X-GitHub-Api-Version': '2022-11-28'
-        },
-        body: body,
-        signal: controller.signal
-      })
-        .then(response => {
-          if (response.status === 401 || response.status === 403) {
-            clearTimeout(timeoutId);
-            throw new Error('GitHub rejected the token (HTTP ' + response.status + ') - check the token and its repo permission');
-          }
-          if (!response.ok) {
-            clearTimeout(timeoutId);
-            throw new Error('HTTP ' + response.status);
-          }
-          return response.json();
-        })
-        .then(data => { clearTimeout(timeoutId); resolve(data); })
-        .catch(err => { clearTimeout(timeoutId); reject(err); });
-    });
-    const url = json && json.content && json.content.download_url;
-    if (url && typeof url === 'string' && url.startsWith('http')) return url;
-    throw new Error('GitHub upload failed');
-  },
-  fitWithin(w, h, maxWidth) {
-    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0 || !isFinite(maxWidth) || maxWidth <= 0) {
-      return { width: 0, height: 0 };
-    }
-    const scale = Math.min(1, maxWidth / Math.max(w, h));
-    return { width: Math.round(w * scale), height: Math.round(h * scale) };
-  },
-
-  async compressImage(file, maxWidth = 1280, quality = 0.85) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            const size = this.fitWithin(img.width, img.height, maxWidth);
-            const width = size.width;
-            const height = size.height;
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            canvas.toBlob((blob) => {
-              if (blob) {
-                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-              } else {
-                resolve(file);
-              }
-            }, 'image/jpeg', quality);
-          } catch (err) {
-            reject(err);
-          }
-        };
-        img.onerror = () => reject(new Error('Failed to load image'));
-        img.src = e.target.result;
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  },
-
-  // Build a small thumbnail data-URL for embedding directly in the link.
-  // Last resort when every upload host fails - no network needed.
-  async makeThumbnailDataUrl(file, maxWidth = 384, quality = 0.55) {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-    const dims = await new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.width, h: img.height, src: dataUrl });
-      img.onerror = () => reject(new Error('Cannot decode image (HEIC photos are not supported - use JPEG or a screenshot)'));
-      img.src = dataUrl;
-    });
-    const size = this.fitWithin(dims.w, dims.h, maxWidth);
-    let width = size.width;
-    let height = size.height;
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        } catch (err) {
-          reject(err);
-        }
-      };
-      img.onerror = () => reject(new Error('Cannot decode image'));
-      img.src = dims.src;
-    });
-  },
-
-  async uploadToService(serviceName, file) {
-    const service = this.imageHost.services[serviceName];
-    const formData = new FormData();
-    if (service.formData) {
-      Object.entries(service.formData).forEach(([key, value]) => {
-        formData.append(key, value);
+  // ---- Turnstile + short-lived write session (one challenge per gift) ----
+  async getTurnstileToken() {
+    const siteKey = this.config.turnstileSiteKey;
+    if (!siteKey) throw new ShareError('SESSION_FAILED', 'Turnstile site key is not configured');
+    if (typeof document === 'undefined') throw new ShareError('SESSION_FAILED', 'No browser');
+    if (!window.turnstile) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = () => reject(new ShareError('SESSION_FAILED', 'Could not load the human-check script'));
+        document.head.appendChild(s);
       });
     }
-    formData.append(service.fieldName, file, file.name || 'photo.jpg');
-
-    // Single direct attempt: CORS failures reject immediately, so this
-    // stays fast. On failure the caller falls back to link embedding.
-    const url = await this.doFetch(service.uploadUrl, service.method || 'POST', formData, service);
-    if (url) return url;
-
-    throw new Error(`${serviceName} upload failed`);
+    return new Promise((resolve, reject) => {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:10000;';
+      document.body.appendChild(box);
+      const done = (fn, v) => { try { window.turnstile.remove(box); } catch (e) { /* ignore */ } box.remove(); fn(v); };
+      const timer = setTimeout(() => done(reject, new ShareError('SESSION_FAILED', 'Human check timed out')), 60000);
+      window.turnstile.render(box, {
+        sitekey: siteKey,
+        callback: (tok) => { clearTimeout(timer); done(resolve, tok); },
+        'error-callback': () => { clearTimeout(timer); done(reject, new ShareError('SESSION_FAILED', 'Human check failed')); }
+      });
+    });
   },
 
-  // Photo URLs come from the share-link payload, i.e. untrusted input.
-  // Only allow safe schemes and reject anything that could break out
-  // of an HTML attribute. Returns '' for anything suspicious.
+  async getSession() {
+    const now = Math.floor(Date.now() / 1000);
+    if (this._session && this._session.exp - 60 > now) return this._session.session;
+    if (!this.isConfigured()) throw new ShareError('NOT_CONFIGURED', 'Sharing service is not configured');
+    const turnstile = await this.getTurnstileToken();
+    let res;
+    try {
+      res = await this._fetch('/api/session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turnstile })
+      }, 20000);
+    } catch (e) { throw new ShareError('SESSION_FAILED', 'Could not reach the sharing service'); }
+    if (res.status === 503) throw new ShareError('NOT_CONFIGURED', 'Sharing service is not fully configured');
+    if (!res.ok) throw new ShareError('SESSION_FAILED', 'Session rejected (HTTP ' + res.status + ')');
+    this._session = await res.json();
+    return this._session.session;
+  },
+
+  // ---- Device uploads: original bytes, stored as an r2:<id> reference ----
+  async uploadImage(file) {
+    if (!file) throw new ShareError('UPLOAD_FAILED', 'No file');
+    if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type || '')) {
+      throw new ShareError('UPLOAD_FAILED', 'Unsupported image type (' + (file.type || 'unknown') + '). Use JPEG, PNG, WebP or GIF.');
+    }
+    if (file.size > this.config.maxImageBytes) {
+      throw new ShareError('UPLOAD_FAILED', 'Image is larger than ' + Math.round(this.config.maxImageBytes / 1048576) + ' MB');
+    }
+    let lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const session = await this.getSession();
+        const res = await this._fetch('/api/img', {
+          method: 'PUT', headers: { 'Content-Type': file.type, 'X-Session': session }, body: file
+        });
+        if (res.status === 401) { this._session = null; throw new ShareError('UPLOAD_FAILED', 'Session expired'); }
+        if (res.status === 503) throw new ShareError('NOT_CONFIGURED', 'Sharing service is not fully configured');
+        if (!res.ok) {
+          const retryable = res.status >= 500 || res.status === 429;
+          lastErr = new ShareError('UPLOAD_FAILED', 'Upload rejected (HTTP ' + res.status + ')');
+          if (!retryable) throw lastErr;
+          continue;
+        }
+        const body = await res.json();
+        if (!body || !/^[A-Za-z0-9]{8,32}$/.test(body.id || '')) throw new ShareError('UPLOAD_FAILED', 'Bad response from server');
+        return 'r2:' + body.id;
+      } catch (e) {
+        if (e instanceof ShareError && (e.code === 'NOT_CONFIGURED' || e.code === 'SESSION_FAILED')) throw e;
+        lastErr = e instanceof ShareError ? e : new ShareError('UPLOAD_FAILED', 'Network error while uploading');
+        if (attempt === 1 || (e instanceof ShareError && /Unsupported|larger|rejected \(HTTP 4/.test(e.message))) throw lastErr;
+      }
+    }
+    throw lastErr || new ShareError('UPLOAD_FAILED', 'Upload failed');
+  },
+
+  // ---- Photo references (compact; never bytes, never data:/blob:) ----
+  driveIdFrom(url) {
+    const m = String(url || '').match(/^https?:\/\/drive\.google\.com\/thumbnail\?id=([A-Za-z0-9_-]{10,100})/);
+    return m ? m[1] : null;
+  },
+
+  toRef(url) {
+    if (!url || typeof url !== 'string') return '';
+    const u = url.trim();
+    if (/^(r2|drive):/.test(u)) return /^(r2:[A-Za-z0-9]{8,32}|drive:[A-Za-z0-9_-]{10,100})$/.test(u) ? u : '';
+    const drive = this.driveIdFrom(u);
+    if (drive) return 'drive:' + drive;
+    if (this.isConfigured()) {
+      const base = this._api('/img/');
+      if (u.indexOf(base) === 0) {
+        const id = u.slice(base.length);
+        if (/^[A-Za-z0-9]{8,32}$/.test(id)) return 'r2:' + id;
+      }
+    }
+    if (/^(data|blob|file):/i.test(u)) return '';
+    return /^https:\/\//i.test(u) ? this.sanitizePhotoUrl(u) : '';
+  },
+
+  refToUrl(ref) {
+    if (!ref || typeof ref !== 'string') return '';
+    let m = ref.match(/^r2:([A-Za-z0-9]{8,32})$/);
+    if (m) return this.isConfigured() ? this._api('/img/' + m[1]) : '';
+    m = ref.match(/^drive:([A-Za-z0-9_-]{10,100})$/);
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w2000';
+    return this.sanitizePhotoUrl(ref); // legacy links: plain https or old data:image
+  },
+
+  // Gift record stored on the server: same shape as before, photoUrls -> refs
+  toRecord(data) {
+    const rec = Object.assign({}, data);
+    const urls = Array.isArray(data.photoUrls) ? data.photoUrls : [];
+    const texts = Array.isArray(data.photoTexts) ? data.photoTexts : [];
+    rec.photoUrls = [];
+    rec.photoTexts = [];
+    urls.forEach((u, i) => {
+      const ref = this.toRef(u);
+      if (!ref) throw new ShareError('INVALID_PHOTO', 'Photo ' + (i + 1) + ' cannot be shared', { index: i + 1 });
+      rec.photoUrls.push(ref);
+      rec.photoTexts.push(texts[i] || '');
+    });
+    return rec;
+  },
+
+  // Turn a stored/legacy record into something renderable (refs -> URLs).
+  // Keeps photoUrls and photoTexts aligned when an entry is unusable.
+  resolveGift(rec) {
+    if (!rec || typeof rec !== 'object') return rec;
+    const out = Object.assign({}, rec);
+    const urls = Array.isArray(rec.photoUrls) ? rec.photoUrls : [];
+    const texts = Array.isArray(rec.photoTexts) ? rec.photoTexts : [];
+    out.photoUrls = [];
+    out.photoTexts = [];
+    urls.forEach((u, i) => {
+      const url = this.refToUrl(u);
+      if (url) { out.photoUrls.push(url); out.photoTexts.push(texts[i] || ''); }
+    });
+    return out;
+  },
+
+  // ---- Gift storage ----
+  async saveGift(data) {
+    const record = this.toRecord(data);
+    if (!this.isConfigured()) throw new ShareError('NOT_CONFIGURED', 'Sharing service is not configured');
+    let res;
+    try {
+      const session = await this.getSession();
+      res = await this._fetch('/api/gift', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': session },
+        body: JSON.stringify(record)
+      });
+    } catch (e) {
+      if (e instanceof ShareError) throw e;
+      throw new ShareError('STORAGE_FAILED', 'Could not reach the sharing service');
+    }
+    if (res.status === 401) this._session = null;
+    if (res.status === 503) throw new ShareError('NOT_CONFIGURED', 'Sharing service is not fully configured');
+    if (!res.ok) throw new ShareError('STORAGE_FAILED', 'Storage rejected the gift (HTTP ' + res.status + ')');
+    const body = await res.json().catch(() => null);
+    if (!body || !/^[A-Za-z0-9]{6,32}$/.test(body.id || '')) throw new ShareError('STORAGE_FAILED', 'Bad response from server');
+    return body.id;
+  },
+
+  async loadGift(id) {
+    if (!/^[A-Za-z0-9]{6,32}$/.test(id || '')) throw new ShareError('BAD_ID', 'Malformed gift id');
+    if (!this.isConfigured()) throw new ShareError('NOT_CONFIGURED', 'Sharing service is not configured');
+    let res;
+    try {
+      res = await this._fetch('/api/gift/' + encodeURIComponent(id), { method: 'GET' }, 20000);
+    } catch (e) { throw new ShareError('STORAGE_FAILED', 'Could not reach the sharing service'); }
+    if (res.status === 404) throw new ShareError('NOT_FOUND', 'Gift not found');
+    if (res.status === 400) throw new ShareError('BAD_ID', 'Malformed gift id');
+    if (!res.ok) throw new ShareError('STORAGE_FAILED', 'HTTP ' + res.status);
+    let rec;
+    try { rec = await res.json(); } catch (e) { throw new ShareError('STORAGE_FAILED', 'Corrupt gift record'); }
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) throw new ShareError('STORAGE_FAILED', 'Corrupt gift record');
+    return rec;
+  },
+
+  buildShareUrl(id) {
+    const base = window.location.href.split('#')[0].split('?')[0];
+    return base + '#g=' + id;
+  },
+
+  // Classify a location.hash (without the leading '#')
+  parseHash(hash) {
+    const h = String(hash || '');
+    if (!h) return { type: 'none' };
+    if (h.indexOf('g=') === 0) {
+      const id = h.slice(2);
+      return /^[A-Za-z0-9]{6,32}$/.test(id) ? { type: 'id', id: id } : { type: 'badid' };
+    }
+    const data = this.decodeData(h);
+    return data && typeof data === 'object' ? { type: 'legacy', data: data } : { type: 'broken' };
+  },
+
+  // ---- Diagnostics (counts only; never logs gift content or URLs) ----
+  urlStats(gift, url, urlBefore) {
+    const enc = (s) => (typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(s).length : s.length);
+    let embedded = 0;
+    const hash = String(url || '').split('#')[1] || '';
+    const legacy = hash && hash.indexOf('g=') !== 0 ? this.decodeData(hash) : null;
+    const photos = legacy && Array.isArray(legacy.photoUrls) ? legacy.photoUrls : [];
+    photos.forEach(p => { if (/^data:image/i.test(p)) embedded += p.length; });
+    const out = {
+      payloadBytes: enc(JSON.stringify(gift || {})),
+      urlChars: String(url || '').length,
+      urlBytes: enc(String(url || '')),
+      embeddedImageChars: embedded
+    };
+    if (urlBefore != null) {
+      out.urlCharsBefore = String(urlBefore).length;
+      out.urlCharsAfter = out.urlChars;
+    }
+    return out;
+  },
+
   sanitizePhotoUrl(url) {
     if (!url || typeof url !== 'string') return '';
     const u = url.trim();
     if (!/^(https?:\/\/|data:image\/)/i.test(u)) return '';
     if (/["'<>\s`]/.test(u)) return '';
     return u;
-  },
-
-  doFetch(url, method, body, service) {
-    return new Promise((resolve, reject) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-        reject(new Error('Request timeout'));
-      }, 15000);
-
-      fetch(url, { method, body, signal: controller.signal })
-        .then(response => {
-          if (!response.ok) {
-            clearTimeout(timeoutId);
-            throw new Error('HTTP ' + response.status);
-          }
-          const ct = response.headers.get('content-type');
-          if (ct && ct.includes('application/json')) {
-            return response.json().then(data => ({ data, timeoutId }));
-          }
-          return response.text().then(data => ({ data, timeoutId }));
-        })
-        .then(({ data, timeoutId }) => {
-          clearTimeout(timeoutId);
-          if (!data) { reject(new Error('Empty response')); return; }
-          
-          // Try to extract URL using service's getResponseUrl
-          if (service && service.getResponseUrl) {
-            const resultUrl = service.getResponseUrl(data);
-            if (resultUrl) {
-              resolve(resultUrl);
-              return;
-            }
-          }
-          
-          // Fallback: try common response formats
-          if (typeof data === 'string' && data.startsWith('http')) {
-            resolve(data);
-          } else if (data && data.url) {
-            resolve(data.url);
-          } else if (data && data.image && data.image.url) {
-            resolve(data.image.url);
-          } else if (data && data.data && data.data.url) {
-            resolve(data.data.url);
-          } else if (data && data.image_url) {
-            resolve(data.image_url);
-          } else {
-            console.warn('Could not extract URL from response:', data);
-            resolve(null);
-          }
-        })
-        .catch(err => {
-          clearTimeout(timeoutId);
-          reject(err);
-        });
-    });
   },
 
   // Convert share-page links into direct image links that render in <img>
@@ -369,10 +293,10 @@ const Share = {
     // Google Drive share link -> direct thumbnail link
     // https://drive.google.com/file/d/FILEID/view...
     m = u.match(/^https?:\/\/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1000';
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w2000';
     // https://drive.google.com/open?id=FILEID
     m = url.trim().match(/^https?:\/\/drive\.google\.com\/open\?[^#]*\bid=([^&#]+)/);
-    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1000';
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w2000';
     // Dropbox share link -> direct download link
     // https://www.dropbox.com/s/..../photo.jpg -> dl.dropboxusercontent.com
     m = u.match(/^https?:\/\/(?:www\.)?dropbox\.com\/(.+)$/);
@@ -400,70 +324,13 @@ const Share = {
     }
   },
 
+  // Legacy only (kept for tests / decoding old links). The app no longer
+  // uses this to build share links.
   generateFullUrl(data) {
     // Use href (not origin+pathname) so links also work from file:// and any host
     const baseUrl = window.location.href.split('#')[0];
     const encoded = this.encodeData(data);
     return baseUrl + '#' + encoded;
-  },
-
-  fetchText(url, options, timeoutMs) {
-    return new Promise((resolve) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs || 8000);
-      fetch(url, Object.assign({}, options || {}, { signal: controller.signal }))
-        .then(response => {
-          clearTimeout(timeoutId);
-          if (!response.ok) throw new Error('HTTP ' + response.status);
-          const ct = response.headers.get('content-type') || '';
-          return (ct.indexOf('application/json') !== -1 ? response.json() : response.text())
-            .then(data => ({ data, timeoutId }));
-        })
-        .then(({ data, timeoutId }) => {
-          clearTimeout(timeoutId);
-          if (!data) return resolve(null);
-          const candidate = typeof data === 'string' ? data.trim() : (data.result_url || data.short_url || data.shorturl || data.url || data.link || '');
-          resolve(candidate && String(candidate).trim().startsWith('http') ? String(candidate).trim() : null);
-        })
-        .catch((err) => {
-          clearTimeout(timeoutId);
-          console.warn('fetchText failed for ' + url + ':', err && err.message ? err.message : err);
-          resolve(null);
-        });
-    });
-  },
-
-  async shortenUrl(longUrl) {
-    // Short links make much sparser, easier-to-scan QR codes,
-    // so try three free shorteners before falling back to the long URL.
-    // Links already short need nothing; huge packed-photo links would
-    // only burn ~16s of doomed shortener timeouts, so skip those too.
-    if (longUrl.length < 200 || longUrl.length > 8000) return longUrl;
-
-    const encoded = encodeURIComponent(longUrl);
-    const attempts = [
-      { url: 'https://tinyurl.com/api-create.php?url=' + encoded },
-      { url: 'https://is.gd/create.php?format=simple&url=' + encoded },
-      {
-        url: 'https://cleanuri.com/api/v1/shorten',
-        options: {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'url=' + encoded
-        }
-      }
-    ];
-
-    for (const attempt of attempts) {
-      try {
-        const shortUrl = await this.fetchText(attempt.url, attempt.options);
-        if (shortUrl) return shortUrl;
-      } catch (err) {
-        console.warn('URL shortening failed:', err);
-      }
-    }
-    // Return original URL if shortening fails
-    return longUrl;
   },
 
   getQrCodeUrl(url) {

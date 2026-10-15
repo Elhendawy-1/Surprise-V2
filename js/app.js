@@ -27,19 +27,20 @@ const App = {
 
   // Initialize the app
   init() {
-    // Check if this is a recipient view (URL has hash data)
+    // Recipient view: the URL hash is either a short gift id (#g=...) or a
+    // legacy Base64 payload from older links.
     if (window.location.hash && window.location.hash.length > 1) {
-      const hash = window.location.hash.substring(1);
-      const data = Share.decodeData(hash);
-      if (data) {
-        this.showRecipientView(data);
+      const parsed = Share.parseHash(window.location.hash.substring(1));
+      if (parsed.type === 'legacy') {
+        this.showRecipientView(Share.resolveGift(parsed.data));
         return;
       }
-      // Hash present but unreadable: the link was cut short while sharing.
-      // Show a clear message instead of the empty creator page.
-      this.bindEvents();
-      this.applyLang();
-      this.showSection('broken');
+      if (parsed.type === 'id') {
+        this.loadSharedGift(parsed.id);
+        return;
+      }
+      // Hash present but unusable (cut short, or malformed id): clear error.
+      this.showBroken('brokenTitle', 'brokenText');
       return;
     }
 
@@ -65,6 +66,38 @@ const App = {
           Animations.stopFloatingHearts();
         } catch (e) { /* ignore */ }
       });
+    }
+  },
+
+  // Error page for unusable / missing / unreachable gifts
+  showBroken(titleKey, textKey) {
+    const title = document.querySelector('[data-i18n="brokenTitle"]');
+    const text = document.querySelector('[data-i18n="brokenText"]');
+    if (title) title.setAttribute('data-i18n', titleKey);
+    if (text) text.setAttribute('data-i18n', textKey);
+    this.bindEvents();
+    this.applyLang();
+    this.showSection('broken');
+  },
+
+  // Fetch a stored gift by id, then render it (recipient side)
+  async loadSharedGift(id) {
+    const lang = this.state.lang || 'en';
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    this.setLoadingStatus(t('loadingGift', lang));
+    try {
+      const record = await Share.loadGift(id);
+      const data = Share.resolveGift(record);
+      if (overlay) overlay.style.display = 'none';
+      this.setLoadingStatus('');
+      this.showRecipientView(data);
+    } catch (err) {
+      if (overlay) overlay.style.display = 'none';
+      this.setLoadingStatus('');
+      const code = err && err.code;
+      if (code === 'NOT_FOUND' || code === 'BAD_ID') this.showBroken('brokenNotFoundTitle', 'brokenNotFoundText');
+      else this.showBroken('brokenLoadTitle', 'brokenLoadText');
     }
   },
 
@@ -1125,99 +1158,56 @@ const App = {
     this.setLoadingStatus(t('loadPreparing', lang));
 
     try {
-      // Upload file-based photos (non-blocking - continue even if uploads fail)
+      if (!Share.isConfigured()) {
+        alert(t('alertNotConfigured', lang));
+        return;
+      }
+      // Upload device photos (original files, no re-compression) to the
+      // site's own storage. Nothing is uploaded without the creator's OK,
+      // and any failure aborts with a clear message - photos are never
+      // silently dropped and never packed into the link.
       const slots = this.photoSlots();
       const uploadedUrls = {};
       const fileSlots = slots.filter(s => this.state.photos[s]);
       const ordinalOf = (slotId) => fileSlots.indexOf(slotId) + 1;
+      if (fileSlots.length > 0 && !this.uploadConsent) {
+        if (!confirm(t('confirmUpload', lang))) return;
+        this.uploadConsent = true;
+      }
+      if (!this.uploadedRefs) this.uploadedRefs = new WeakMap(); // retry never re-uploads
       let done = 0;
       for (const i of fileSlots) {
         done++;
         this.setLoadingStatus(t('loadUploading', lang, { a: done, b: fileSlots.length }));
-        try {
-          console.log('Uploading photo ' + ordinalOf(i) + '...');
-          const url = await Share.uploadImage(this.state.photos[i]);
-          if (url) {
-            uploadedUrls[i] = url;
-            console.log('Photo ' + ordinalOf(i) + ' uploaded:', url);
-          } else {
-            console.warn('Photo ' + ordinalOf(i) + ' upload returned null');
+        const file = this.state.photos[i];
+        let ref = this.uploadedRefs.get(file);
+        if (!ref) {
+          try {
+            ref = await Share.uploadImage(file);
+          } catch (photoErr) {
+            if (photoErr && photoErr.code === 'NOT_CONFIGURED') throw photoErr;
+            alert(t('alertUploadFailed', lang, { a: ordinalOf(i), b: (photoErr && photoErr.message) || 'error' }));
+            return;
           }
-        } catch (photoErr) {
-          console.warn('Photo ' + ordinalOf(i) + ' upload failed:', photoErr);
+          this.uploadedRefs.set(file, ref);
         }
+        uploadedUrls[i] = ref;
       }
       this.state.photoUrls_fromFiles = uploadedUrls;
 
-      // Last resort for device photos that failed to upload:
-      // embed thumbnails directly in the link (no hosting needed).
-      // Tries bigger thumbnails first, then smaller ones, so that
-      // EVERY photo gets in whenever the link budget allows.
-      let embedded = 0;
-      const skipped = [];
-      let heicWarned = false;
-      const tiers = [{ w: 512, q: 0.6 }, { w: 384, q: 0.55 }, { w: 256, q: 0.5 }];
-      for (const i of fileSlots) {
-        if (!uploadedUrls[i]) {
-          this.setLoadingStatus(t('loadPacking', lang, { a: ordinalOf(i) }));
-          let placed = false;
-          for (const tier of tiers) {
-            try {
-              const thumb = await Share.makeThumbnailDataUrl(this.state.photos[i], tier.w, tier.q);
-              if (!thumb) continue;
-              uploadedUrls[i] = thumb;
-              this.state.photoUrls_fromFiles = uploadedUrls;
-              const trialLength = Share.generateFullUrl(this.collectData()).length;
-              if (trialLength <= (Share.imageHost.maxEmbedLinkLength || 60000)) {
-                embedded++;
-                placed = true;
-                console.log('Photo ' + ordinalOf(i) + ' embedded at ' + tier.w + 'px (' + thumb.length + ' chars)');
-                break;
-              }
-              uploadedUrls[i] = null; // too big at this size - try smaller tier
-            } catch (thumbErr) {
-              console.warn('Photo ' + ordinalOf(i) + ' embed failed:', thumbErr && thumbErr.message);
-              if (!heicWarned && thumbErr && /HEIC/i.test(thumbErr.message || '')) {
-                heicWarned = true;
-                alert(t('alertHeic', lang));
-              }
-              break; // decode errors won't improve with smaller tiers
-            }
-          }
-          if (!placed) {
-            uploadedUrls[i] = null;
-            skipped.push(ordinalOf(i));
-            console.warn('Photo ' + ordinalOf(i) + ' could not fit into the link, skipped');
-          }
-        }
-      }
-      this.state.photoUrls_fromFiles = uploadedUrls;
-
-      // Re-collect data with uploaded / embedded URLs
+      // Collect final data (file photos are r2: refs, pasted ones are
+      // normalized links) and store it; the link carries only the id.
       const finalData = this.collectData();
-      console.log('Photo URLs for link:', finalData.photoUrls.length);
-
-      if (fileSlots.length > 0 && finalData.photoUrls.length === 0) {
-        alert(t('alertNoPhotos', lang));
-      }
-
       this.setLoadingStatus(t('loadCreating', lang));
-      const fullUrl = Share.generateFullUrl(finalData);
-      console.log('Full URL length:', fullUrl.length);
-
-      const shortUrl = await Share.shortenUrl(fullUrl);
+      const giftId = await Share.saveGift(finalData);
+      const shortUrl = Share.buildShareUrl(giftId);
+      const diag = Share.urlStats(finalData, shortUrl);
+      console.log('Share link stats:', diag);
 
       // Update share section
       document.getElementById('share-link').value = shortUrl;
       const subtitle = document.querySelector('#section-share .section-subtitle');
-      const photoCount = finalData.photoUrls.length;
-      let note = t('noteDefault', lang);
-      if (embedded > 0 && skipped.length === 0) {
-        note = t('noteEmbedded', lang, { a: photoCount });
-      } else if (skipped.length > 0) {
-        note = t('noteSkipped', lang, { a: skipped.join(', ') });
-        alert(t('alertSkipped', lang, { a: skipped.join(', ') }));
-      }
+      const note = t('noteShort', lang);
       // QR codes only scan when the link is short. Huge links (packed photos)
       // produce codes no camera can read, so hide the code and say so.
       const qrBox = document.getElementById('share-qr');
@@ -1255,20 +1245,20 @@ const App = {
         qrBox.style.display = '';
       } else {
         qrBox.style.display = 'none';
-        note += t('noteLong', lang);
-      }
-      // A very long link may be cut by chat apps on arrival, which
-      // breaks the whole gift. Warn clearly when that risk exists.
-      if (shortUrl.length > 8000) {
-        note += ' ' + t('noteTruncate', lang);
       }
       subtitle.textContent = note;
       this.lastShareNote = note;
 
       this.showSection('share');
     } catch (err) {
-      console.error('Error generating link:', err);
-      alert(t('alertError', lang, { a: err.message }));
+      console.error('Error generating link:', err && err.code, err && err.message);
+      const code = err && err.code;
+      let msg;
+      if (code === 'NOT_CONFIGURED') msg = t('alertNotConfigured', lang);
+      else if (code === 'STORAGE_FAILED' || code === 'SESSION_FAILED') msg = t('alertStorageFailed', lang);
+      else if (code === 'INVALID_PHOTO') msg = t('alertBadPhoto', lang, { a: err.index });
+      else msg = t('alertError', lang, { a: err && err.message });
+      alert(msg);
     } finally {
       this.isGenerating = false;
       if (genBtn) {

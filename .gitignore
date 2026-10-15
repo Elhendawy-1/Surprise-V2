@@ -17,6 +17,7 @@ desktop.ini
 # Local dumps / patches (never commit)
 project-source.txt
 responsive-changes.diff
+tests/.qr-urls.json
 
 # Dependencies (none required, static site)
 node_modules/

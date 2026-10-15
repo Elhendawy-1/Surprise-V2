@@ -1,0 +1,19 @@
+name = "surprise-v2-api"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# Comma-separated list of origins allowed to call the API from a browser.
+ALLOWED_ORIGIN = "https://elhendawy-1.github.io"
+
+[[kv_namespaces]]
+binding = "GIFTS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"   # wrangler kv namespace create GIFTS
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "surprise-v2-images"    # wrangler r2 bucket create surprise-v2-images
+
+# Secrets (never commit these):
+#   wrangler secret put TURNSTILE_SECRET   (Turnstile widget secret key)
+#   wrangler secret put SESSION_SECRET     (any long random string, e.g. openssl rand -hex 32)
