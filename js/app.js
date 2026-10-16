@@ -28,9 +28,11 @@ const App = {
   // Initialize the app
   init() {
     // Recipient view: the URL hash is either a short gift id (#g=...) or a
-    // legacy Base64 payload from older links.
+    // legacy Base64 payload from older links. Routed through the Gift
+    // module so hash parsing lives behind one seam (Gift.parseRef).
     if (window.location.hash && window.location.hash.length > 1) {
-      const parsed = Share.parseHash(window.location.hash.substring(1));
+      const parse = (window.Gift && window.Gift.parseRef) ? window.Gift.parseRef : Share.parseHash.bind(Share);
+      const parsed = parse(window.location.hash.substring(1));
       if (parsed.type === 'legacy') {
         this.showRecipientView(Share.resolveGift(parsed.data));
         return;
@@ -80,18 +82,26 @@ const App = {
     this.showSection('broken');
   },
 
-  // Fetch a stored gift by id, then render it (recipient side)
+  // Fetch a stored gift by id, then render it (recipient side).
+  // Unified open path: Gift.open never rejects — it maps storage errors
+  // to { ok, reason } so this stays a thin adapter over the deep module.
   async loadSharedGift(id) {
     const lang = this.state.lang || 'en';
     const overlay = document.getElementById('loading-overlay');
     if (overlay) overlay.style.display = 'flex';
     this.setLoadingStatus(t('loadingGift', lang));
     try {
-      const record = await Share.loadGift(id);
-      const data = Share.resolveGift(record);
+      const opened = window.Gift && window.Gift.open
+        ? await window.Gift.open('#g=' + id)
+        : { ok: true, data: Share.resolveGift(await Share.loadGift(id)) };
       if (overlay) overlay.style.display = 'none';
       this.setLoadingStatus('');
-      this.showRecipientView(data);
+      if (!opened.ok) {
+        if (opened.reason === 'unknown-id') this.showBroken('brokenNotFoundTitle', 'brokenNotFoundText');
+        else this.showBroken('brokenLoadTitle', 'brokenLoadText');
+        return;
+      }
+      this.showRecipientView(opened.data);
     } catch (err) {
       if (overlay) overlay.style.display = 'none';
       this.setLoadingStatus('');
@@ -479,7 +489,11 @@ const App = {
 
     // Show only the people this topic fits, and clear any
     // previous pick that is no longer available.
-    const allowed = this.topicPeople[occasion] || this.topicPeople.birthday;
+    // Single source: Gift.occasions registry drives eligibility, so a
+    // registered occasion works in the UI without editing App.
+    const registry = (window.Gift && window.Gift.occasions) || null;
+    const allowed = (registry && registry[occasion] && registry[occasion].people)
+      || this.topicPeople[occasion] || this.topicPeople.birthday;
     document.querySelectorAll('#relationship-grid .card').forEach(card => {
       const ok = allowed.indexOf(card.dataset.relationship) !== -1;
       card.style.display = ok ? '' : 'none';
@@ -905,6 +919,15 @@ const App = {
     } catch (e) { /* ignore */ }
   },
 
+  // Single source for per-topic identity: Gift.occasions registry wins so
+  // registered occasions render without editing App; falls back to the
+  // built-in table for older cached app.js.
+  occasionMetaFor(occ) {
+    const reg = (typeof window !== 'undefined' && window.Gift && window.Gift.occasions) || null;
+    if (reg && reg[occ]) return reg[occ];
+    return this.occasionMeta[occ] || this.occasionMeta.birthday;
+  },
+
   // Per-topic identity: icon, centerpiece, gallery heading, closing hearts
   occasionMeta: {
     birthday: { icon: '🎂', galleryHead: null, closing: '❤ ❤ ❤' },
@@ -926,7 +949,7 @@ const App = {
     document.querySelectorAll('.occasion-field').forEach(field => {
       field.style.display = field.dataset.for === occ ? '' : 'none';
     });
-    const meta = this.occasionMeta[occ] || this.occasionMeta.birthday;
+    const meta = this.occasionMetaFor(occ);
     const icon = document.getElementById('occasion-banner-icon');
     const text = document.getElementById('occasion-banner-text');
     if (icon) icon.textContent = meta.icon;
@@ -1211,11 +1234,11 @@ const App = {
       document.getElementById('share-link').value = shortUrl;
       const subtitle = document.querySelector('#section-share .section-subtitle');
       const note = t('noteShort', lang);
-      // QR codes only scan when the link is short. Huge links (packed photos)
+      // QR gate lives in the Gift module (single source): huge links
       // produce codes no camera can read, so hide the code and say so.
       const qrBox = document.getElementById('share-qr');
-      if (shortUrl.length <= 2000) {
-        const qrUrl = Share.getQrCodeUrl(shortUrl);
+      const qrUrl = (window.Gift && window.Gift.qrFor) ? window.Gift.qrFor(shortUrl) : Share.getQrCodeUrl(shortUrl);
+      if (qrUrl) {
         document.getElementById('qr-image').src = qrUrl;
         const qrDownload = document.getElementById('qr-download');
         if (qrDownload) {
@@ -1335,11 +1358,11 @@ const App = {
       note = t('noteSkipped', lang, { a: skipped.join(', ') });
       alert(t('alertSkipped', lang, { a: skipped.join(', ') }));
     }
-    // QR codes only scan when the link is short. Huge links (packed photos)
-    // produce codes no camera can read, so hide the code and say so.
+    // QR gate lives in the Gift module (single source): huge links (packed
+    // photos) produce codes no camera can read, so hide the code and say so.
     const qrBox = document.getElementById('share-qr');
-    if (fullUrl.length <= 2000) {
-      const qrUrl = Share.getQrCodeUrl(fullUrl);
+    const qrUrl = (window.Gift && window.Gift.qrFor) ? window.Gift.qrFor(fullUrl) : Share.getQrCodeUrl(fullUrl);
+    if (qrUrl) {
       document.getElementById('qr-image').src = qrUrl;
       const qrDownload = document.getElementById('qr-download');
       if (qrDownload) {
@@ -1376,7 +1399,9 @@ const App = {
     }
     // A very long link may be cut by chat apps on arrival, which
     // breaks the whole gift. Warn clearly when that risk exists.
-    if (fullUrl.length > 8000) {
+    // Threshold lives in the Gift module (single source).
+    const flags = (window.Gift && window.Gift.shareFlags) ? window.Gift.shareFlags(fullUrl) : { truncateWarn: fullUrl.length > 8000 };
+    if (flags.truncateWarn) {
       note += ' ' + t('noteTruncate', lang);
     }
     subtitle.textContent = note;
@@ -1518,7 +1543,7 @@ const App = {
       galleryGrid.innerHTML = galleryHtml;
 
       // Per-topic gallery heading
-      const galMeta = (this.occasionMeta[occ] || {}).galleryHead;
+      const galMeta = (this.occasionMetaFor(occ) || {}).galleryHead;
       if (galMeta) {
         const lang = this.state.lang || 'en';
         const gh = galleryGrid.parentNode.querySelector('.recipient-gallery-heading');
@@ -1532,7 +1557,7 @@ const App = {
     // Closing hearts match the topic
     const closingHearts = document.querySelector('#recipient-view .recipient-closing-hearts');
     if (closingHearts) {
-      closingHearts.textContent = (this.occasionMeta[occ] || this.occasionMeta.birthday).closing;
+      closingHearts.textContent = (this.occasionMetaFor(occ) || this.occasionMeta.birthday).closing;
     }
 
     // Cake only suits birthdays + anniversaries - hide it for other topics
@@ -1850,14 +1875,14 @@ const App = {
     const occ = data.occasion || 'birthday';
     document.getElementById('recipient-greeting').textContent = Generator.getGreeting(data);
     document.getElementById('recipient-footer').textContent = Generator.getFooter(data);
-    const galMeta = (this.occasionMeta[occ] || {}).galleryHead;
+    const galMeta = (this.occasionMetaFor(occ) || {}).galleryHead;
     if (galMeta) {
       const gh = document.querySelector('#recipient-gallery .recipient-gallery-heading');
       if (gh) gh.textContent = t(galMeta, lang);
     }
     const closingHearts = document.querySelector('#recipient-view .recipient-closing-hearts');
     if (closingHearts) {
-      closingHearts.textContent = (this.occasionMeta[occ] || this.occasionMeta.birthday).closing;
+      closingHearts.textContent = (this.occasionMetaFor(occ) || this.occasionMeta.birthday).closing;
     }
     // Keep the corner toggle + prompt labels translated too.
     const toggle = document.getElementById('btn-music-toggle');
